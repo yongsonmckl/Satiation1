@@ -7,36 +7,49 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.mckl.satiation1.ui.screens.CameraScreen
+import com.mckl.satiation1.ui.screens.EditApiKeyScreen
+import com.mckl.satiation1.ui.screens.EditHeightScreen
+import com.mckl.satiation1.ui.screens.EditNameScreen
+import com.mckl.satiation1.ui.screens.EditNutrientsScreen
 import com.mckl.satiation1.ui.screens.EditProfileScreen
-import com.mckl.satiation1.ui.screens.GenderScreen
+import com.mckl.satiation1.ui.screens.EditPronounsScreen
+import com.mckl.satiation1.ui.screens.EditTargetsScreen
+import com.mckl.satiation1.ui.screens.EditWeightScreen
+import com.mckl.satiation1.ui.screens.AppearanceScreen
+import com.mckl.satiation1.ui.screens.FoodTypesScreen
 import com.mckl.satiation1.ui.screens.MainContainer
 import com.mckl.satiation1.ui.screens.ManualEntryPlaceholderScreen
 import com.mckl.satiation1.ui.screens.NameScreen
 import com.mckl.satiation1.ui.screens.NutritionDetailScreen
-import com.mckl.satiation1.ui.screens.SettingsScreen
 import com.mckl.satiation1.ui.screens.SplashScreen
 import com.mckl.satiation1.ui.screens.WeightScreen
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 
 @Composable
-fun SatiationApp() {
+fun SatiationApp(sharedViewModel: SatiationViewModel) {
     val navController = rememberNavController()
-
-    // 1. Initialize the ViewModel here at the top
-    val sharedViewModel: SatiationViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-
-    // 2. Read the user profile directly from the Room Database
     val userProfile by sharedViewModel.userProfile.collectAsState()
+    val isUserProfileLoaded by sharedViewModel.isUserProfileLoaded.collectAsState()
 
-    // 3. If the database is empty (null), they haven't set up yet. Go to Splash.
-    //    If it has data, they are a returning user. Go to Main.
+    if (!isUserProfileLoaded) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
     val startDestination = if (userProfile == null) "splash" else "main"
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -50,14 +63,11 @@ fun SatiationApp() {
         ) {
             // --- ONBOARDING ROUTES ---
             composable("splash") { SplashScreen(navController) }
-            // The onboarding screens share one ViewModel for temporary setup state.
             composable("name") { NameScreen(navController, sharedViewModel) }
             composable("weight") { WeightScreen(navController, sharedViewModel) }
-            composable("gender") { GenderScreen(navController, sharedViewModel) }
 
             // --- MAIN APP ROUTES ---
             composable("main") { MainContainer(navController, sharedViewModel) }
-            composable("settings") { SettingsScreen(navController, sharedViewModel) }
             composable(
                 route = "camera",
                 enterTransition = {
@@ -106,8 +116,17 @@ fun SatiationApp() {
                         targetOffsetY = { it }
                     )
                 }
-            ) { ManualEntryPlaceholderScreen(navController) }
+            ) { ManualEntryPlaceholderScreen(navController, sharedViewModel) }
             composable("edit_profile") { EditProfileScreen(navController, sharedViewModel) }
+            composable("edit_name") { EditNameScreen(navController, sharedViewModel) }
+            composable("edit_pronouns") { EditPronounsScreen(navController, sharedViewModel) }
+            composable("edit_height") { EditHeightScreen(navController, sharedViewModel) }
+            composable("edit_weight") { EditWeightScreen(navController, sharedViewModel) }
+            composable("edit_nutrients") { EditNutrientsScreen(navController, sharedViewModel) }
+            composable("edit_targets") { EditTargetsScreen(navController, sharedViewModel) }
+            composable("food_types") { FoodTypesScreen(navController, sharedViewModel) }
+            composable("appearance") { AppearanceScreen(navController, sharedViewModel) }
+            composable("edit_api_key") { EditApiKeyScreen(navController, sharedViewModel) }
         }
     }
 }

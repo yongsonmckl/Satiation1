@@ -68,7 +68,7 @@ dependencies {
     implementation("com.patrykandpatrick.vico:core:1.13.0")
     implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
     //database
-    implementation("androidx.room:room-runtime:2.6.1")
-    implementation("androidx.room:room-ktx:2.6.1")
-    ksp("androidx.room:room-compiler:2.6.1")
+    implementation("androidx.room:room-runtime:2.7.0")
+    implementation("androidx.room:room-ktx:2.7.0")
+    ksp("androidx.room:room-compiler:2.7.0")
 }

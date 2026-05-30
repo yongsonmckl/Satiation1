@@ -1,57 +1,53 @@
 package com.mckl.satiation1.ui.theme
 
-import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
+import androidx.compose.ui.graphics.Color
+import com.mckl.satiation1.SatiationGreen
+import com.mckl.satiation1.SatiationOrange
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
+    primary = SatiationGreen,
+    secondary = SatiationOrange,
+    background = Color(0xFFF6F3EC),
+    surface = Color(0xFFFFFCF5),
+    surfaceVariant = Color(0xFFF0E9DC),
+    onPrimary = Color(0xFF1C252E),
     onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    onBackground = Color(0xFF26323D),
+    onSurface = Color(0xFF26323D),
+    onSurfaceVariant = Color(0xFF6D7782)
+)
+
+private val DarkColorScheme = darkColorScheme(
+    primary = Color(0xFFCDE986),
+    secondary = Color(0xFFFFA081),
+    background = Color(0xFF11161B),
+    surface = Color(0xFF1A2027),
+    surfaceVariant = Color(0xFF252C34),
+    onPrimary = Color(0xFF11161B),
+    onSecondary = Color(0xFF11161B),
+    onBackground = Color(0xFFF3F5F7),
+    onSurface = Color(0xFFF3F5F7),
+    onSurfaceVariant = Color(0xFFB6C0CA)
 )
 
 @Composable
 fun Satiation1Theme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    themePreference: String = "system",
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    val darkTheme = when (themePreference.lowercase()) {
+        "light" -> false
+        "dark" -> true
+        else -> isSystemInDarkTheme()
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
         typography = Typography,
         content = content
     )
