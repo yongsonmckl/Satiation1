@@ -11,8 +11,7 @@ data class UserProfile(
     val name: String,
     val pronouns: String,
     val startWeight: Int,
-    val currentWeight: Int,
-    val age: Int
+    val currentWeight: Int
 )
 
 // 2. The DAO (The SQL Commands)
@@ -26,7 +25,7 @@ interface UserDao {
 }
 
 // 3. The Database Setup
-@Database(entities = [UserProfile::class], version = 1, exportSchema = false)
+@Database(entities = [UserProfile::class], version = 2, exportSchema = false)
 abstract class SatiationDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
 
@@ -40,7 +39,9 @@ abstract class SatiationDatabase : RoomDatabase() {
                     context.applicationContext,
                     SatiationDatabase::class.java,
                     "satiation_database"
-                ).build()
+                )
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

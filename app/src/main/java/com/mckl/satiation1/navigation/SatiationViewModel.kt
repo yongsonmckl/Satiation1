@@ -2,7 +2,9 @@ package com.mckl.satiation1.navigation
 
 import android.app.Application
 import android.graphics.Bitmap
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mckl.satiation1.database.SatiationDatabase
@@ -16,10 +18,10 @@ import kotlinx.coroutines.launch
 class SatiationViewModel(application: Application) : AndroidViewModel(application) {
 
     var capturedImage = mutableStateOf<Bitmap?>(null)
+    var currentMainTab by mutableStateOf("home")
 
     // Temporary memory for Onboarding setup
     var setupName = ""
-    var setupAge = 0
     var setupWeight = 0
     var setupPronouns = ""
 
@@ -40,7 +42,6 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
     // 4. Function to save edits back into the database
     fun saveProfile(
         name: String,
-        age: Int,
         startWeight: Int,
         currentWeight: Int,
         pronouns: String
@@ -50,7 +51,6 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
             val newProfile = UserProfile(
                 id = 1,
                 name = name,
-                age = age,
                 startWeight = startWeight,
                 currentWeight = currentWeight,
                 pronouns = pronouns

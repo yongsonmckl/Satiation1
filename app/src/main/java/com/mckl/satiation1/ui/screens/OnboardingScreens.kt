@@ -112,20 +112,10 @@ fun WeightScreen(navController: NavController, viewModel: SatiationViewModel) {
 fun GenderScreen(navController: NavController, viewModel: SatiationViewModel) {
     var selectedGender by remember { mutableStateOf<String?>(null) }
     var pronouns by remember { mutableStateOf("") }
-    var age by remember { mutableStateOf("") } // Added age for the database
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Text("About you", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = DarkText)
         Spacer(modifier = Modifier.height(24.dp))
-
-        // Age Input
-        OutlinedTextField(
-            value = age,
-            onValueChange = { age = it },
-            label = { Text("How old are you?") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.height(16.dp))
 
         // Gender Selection
         GENDERS_LIST.forEach { gender ->
@@ -165,12 +155,10 @@ fun GenderScreen(navController: NavController, viewModel: SatiationViewModel) {
 
                 // Save to short-term memory
                 viewModel.setupPronouns = finalPronouns
-                viewModel.setupAge = age.toIntOrNull() ?: 18 // If they leave it blank, default to 18
 
                 // THIS IS THE FINAL STEP! Save to the permanent database
                 viewModel.saveProfile(
                     name = viewModel.setupName,
-                    age = viewModel.setupAge,
                     startWeight = viewModel.setupWeight,
                     currentWeight = viewModel.setupWeight,
                     pronouns = viewModel.setupPronouns
