@@ -869,6 +869,36 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
                     )
                 }
             }
+            if (editingPreset != null) {
+                item {
+                    PresetFoodEditorCard(
+                        title = "Edit Preset Food",
+                        submitLabel = "Update Preset",
+                        initialName = editingPreset?.name.orEmpty(),
+                        initialCategory = editingPreset?.category.orEmpty(),
+                        initialCalories = editingPreset?.calories?.let(::formatNumberInput).orEmpty(),
+                        initialProtein = editingPreset?.proteinGrams?.let(::formatNumberInput).orEmpty(),
+                        initialCarbs = editingPreset?.carbsGrams?.let(::formatNumberInput).orEmpty(),
+                        initialFats = editingPreset?.fatsGrams?.let(::formatNumberInput).orEmpty(),
+                        initialNotes = editingPreset?.notes.orEmpty(),
+                        secondaryActionLabel = "Cancel Edit",
+                        onSecondaryAction = { editingPreset = null },
+                        onSubmit = { name, savedCategory, savedCalories, savedProtein, savedCarbs, savedFats, savedNotes ->
+                            viewModel.savePresetFood(
+                                presetFoodId = editingPreset?.presetFoodId ?: 0,
+                                name = name,
+                                category = savedCategory,
+                                calories = savedCalories,
+                                proteinGrams = savedProtein,
+                                carbsGrams = savedCarbs,
+                                fatsGrams = savedFats,
+                                notes = savedNotes
+                            )
+                            editingPreset = null
+                        }
+                    )
+                }
+            }
         }
         PassiveScrollbar(listState = listState)
     }
