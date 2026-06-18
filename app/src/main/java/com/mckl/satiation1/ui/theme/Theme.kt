@@ -9,8 +9,10 @@ import androidx.compose.ui.graphics.Color
 import com.mckl.satiation1.SatiationGreen
 import com.mckl.satiation1.SatiationOrange
 
+private val LightPrimaryGreen = Color(0xFFA1C247)
+
 private val LightColorScheme = lightColorScheme(
-    primary = SatiationGreen,
+    primary = LightPrimaryGreen,
     secondary = SatiationOrange,
     background = Color(0xFFF6F3EC),
     surface = Color(0xFFFFFCF5),

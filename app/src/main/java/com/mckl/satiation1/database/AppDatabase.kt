@@ -127,6 +127,12 @@ data class DailyMealSummary(
     val fatsGrams: Double
 )
 
+data class FoodFrequencySummary(
+    val name: String,
+    val occurrences: Int,
+    val totalCalories: Double
+)
+
 @Dao
 interface UserProfileDao {
     @Query("SELECT * FROM user_profile WHERE id = 1")
@@ -210,6 +216,20 @@ interface MealDao {
         """
     )
     fun getDailyMealSummaries(startInclusive: Long, endInclusive: Long): Flow<List<DailyMealSummary>>
+
+    @Query(
+        """
+        SELECT
+            name AS name,
+            COUNT(*) AS occurrences,
+            COALESCE(SUM(calories), 0) AS totalCalories
+        FROM meal_items
+        GROUP BY name
+        ORDER BY occurrences DESC, totalCalories DESC, name COLLATE NOCASE ASC
+        LIMIT :limit
+        """
+    )
+    fun getTopFoods(limit: Int): Flow<List<FoodFrequencySummary>>
 }
 
 @Dao

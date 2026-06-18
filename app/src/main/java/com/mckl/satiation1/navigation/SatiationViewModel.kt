@@ -1,6 +1,7 @@
 package com.mckl.satiation1.navigation
 
 import android.app.Application
+import android.content.Context
 import android.graphics.Bitmap
 import androidx.room.withTransaction
 import androidx.compose.runtime.getValue
@@ -9,6 +10,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.mckl.satiation1.database.AppSettings
+import com.mckl.satiation1.database.FoodFrequencySummary
 import com.mckl.satiation1.database.MealItem
 import com.mckl.satiation1.database.MealLog
 import com.mckl.satiation1.database.PresetFood
@@ -23,8 +25,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 
 class SatiationViewModel(application: Application) : AndroidViewModel(application) {
+
+    companion object {
+        private const val ANALYTICS_PREFS = "phase3_progress_prefs"
+        private const val ANNOTATIONS_KEY = "chart_annotations"
+    }
 
     var capturedImage = mutableStateOf<Bitmap?>(null)
     var currentMainTab by mutableStateOf("home")
@@ -41,8 +50,11 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
     private val mealDao = database.mealDao()
     private val weightLogDao = database.weightLogDao()
     private val presetFoodDao = database.presetFoodDao()
+    private val analyticsPrefs = application.getSharedPreferences(ANALYTICS_PREFS, Context.MODE_PRIVATE)
     private val _isUserProfileLoaded = MutableStateFlow(false)
     val isUserProfileLoaded: StateFlow<Boolean> = _isUserProfileLoaded.asStateFlow()
+    private val _chartAnnotations = MutableStateFlow(loadChartAnnotations())
+    val chartAnnotations: StateFlow<Map<String, List<String>>> = _chartAnnotations.asStateFlow()
 
     val userProfile: StateFlow<UserProfile?> = userProfileDao
         .getUserProfile()
@@ -72,6 +84,12 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
     )
 
     val presetFoods: StateFlow<List<PresetFood>> = presetFoodDao.getPresetFoods().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyList()
+    )
+
+    val topFoods: StateFlow<List<FoodFrequencySummary>> = mealDao.getTopFoods(limit = 5).stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList()
@@ -208,5 +226,66 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         viewModelScope.launch(Dispatchers.IO) {
             presetFoodDao.deletePresetFoodById(presetFoodId)
         }
+    }
+
+    fun addChartAnnotation(dayKey: String, note: String) {
+        val trimmedDayKey = dayKey.trim()
+        val trimmedNote = note.trim()
+        if (trimmedDayKey.isBlank() || trimmedNote.isBlank()) {
+            return
+        }
+
+        val updated = _chartAnnotations.value.toMutableMap().apply {
+            val existingNotes = get(trimmedDayKey).orEmpty()
+            put(trimmedDayKey, existingNotes + trimmedNote)
+        }
+        _chartAnnotations.value = updated
+        persistChartAnnotations(updated)
+    }
+
+    fun deleteChartAnnotation(dayKey: String, index: Int) {
+        val existingNotes = _chartAnnotations.value[dayKey].orEmpty()
+        if (index !in existingNotes.indices) {
+            return
+        }
+
+        val updatedNotes = existingNotes.toMutableList().apply { removeAt(index) }
+        val updated = _chartAnnotations.value.toMutableMap().apply {
+            if (updatedNotes.isEmpty()) {
+                remove(dayKey)
+            } else {
+                put(dayKey, updatedNotes)
+            }
+        }
+        _chartAnnotations.value = updated
+        persistChartAnnotations(updated)
+    }
+
+    private fun loadChartAnnotations(): Map<String, List<String>> {
+        val rawJson = analyticsPrefs.getString(ANNOTATIONS_KEY, null) ?: return emptyMap()
+        return runCatching {
+            val root = JSONObject(rawJson)
+            root.keys().asSequence().associateWith { dayKey ->
+                val noteArray = root.optJSONArray(dayKey) ?: JSONArray()
+                buildList {
+                    for (index in 0 until noteArray.length()) {
+                        noteArray.optString(index)
+                            .trim()
+                            .takeIf { it.isNotBlank() }
+                            ?.let(::add)
+                    }
+                }
+            }.filterValues { it.isNotEmpty() }
+        }.getOrDefault(emptyMap())
+    }
+
+    private fun persistChartAnnotations(annotations: Map<String, List<String>>) {
+        val root = JSONObject()
+        annotations.forEach { (dayKey, notes) ->
+            val noteArray = JSONArray()
+            notes.forEach { noteArray.put(it) }
+            root.put(dayKey, noteArray)
+        }
+        analyticsPrefs.edit().putString(ANNOTATIONS_KEY, root.toString()).apply()
     }
 }
