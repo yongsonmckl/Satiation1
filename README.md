@@ -88,6 +88,7 @@ app/
 - All core data is stored locally using Room.
 - The app is designed for a native Android workflow rather than a web-backed experience.
 - Gemini configuration is handled from within the app settings so API credentials remain device-local.
+- Contributors are both me, trying to troubleshoot how to have 2 git accounts on 1 machine and it's giving issues
 
 ## License
 
