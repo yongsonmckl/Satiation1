@@ -81,20 +81,20 @@ Phase 3 is complete.
 
 Completed Phase 3 closeout items:
 - [x] Add conditional calorie-chart x-axis behavior:
-  - no labels when the selected range is longer than 2 weeks
-  - weekday/date labels when the selected range is 2 weeks or less
+- [x] no labels when the selected range is longer than 2 weeks
+- [x] weekday/date labels when the selected range is 2 weeks or less
 - [x] Run focused emulator verification for the refined Progress UI
 - [x] Confirm the calendar flow is stable across overview, calendar, stats, and range selection states
 - [x] Add `Past Week`, `Past Month`, and `All Time` quick-range buttons under the Calendar range card
 - [x] Final polish on the selected calorie-bar color and its deselection return state
 - [x] Add Progress / Calendar / Stats page-entry animation
 - [x] Add manual-entry date override:
-  - `Use Current Date` checkbox
-  - single-date picker when unchecked
+- [x] `Use Current Date` checkbox
+- [x] single-date picker when unchecked
 - [x] Add logged-meal edit/delete from:
-  - Home `Meals Eaten`
-  - Daily Targets meal list
-  - Calendar `Meals for [Date]`
+- [x] Home `Meals Eaten`
+- [x] Daily Targets meal list
+- [x] Calendar `Meals for [Date]`
 
 ### Phase 4
 
