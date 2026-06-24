@@ -1,0 +1,145 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="activity-flow" name="Activity User Flow">
+    <mxGraphModel dx="1488" dy="840" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="start" parent="1" style="ellipse;whiteSpace=wrap;html=1;" value="Start" vertex="1">
+          <mxGeometry height="50" width="100" x="35" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="splash" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Splash Screen" vertex="1">
+          <mxGeometry height="60" width="160" x="205" y="75" as="geometry" />
+        </mxCell>
+        <mxCell id="decision1" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="Profile exists?" vertex="1">
+          <mxGeometry height="80" width="140" x="435" y="65" as="geometry" />
+        </mxCell>
+        <mxCell id="onboarding1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Onboarding:&lt;br&gt;Name / Gender / Pronouns" vertex="1">
+          <mxGeometry height="70" width="220" x="640" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="onboarding2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Onboarding:&lt;br&gt;Weight / Height" vertex="1">
+          <mxGeometry height="70" width="200" x="890" y="20" as="geometry" />
+        </mxCell>
+        <mxCell id="main" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;" value="Main Container" vertex="1">
+          <mxGeometry height="60" width="180" x="900" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="home" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Home Tab" vertex="1">
+          <mxGeometry height="60" width="150" x="720" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="targets" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Daily Targets Tab" vertex="1">
+          <mxGeometry height="60" width="170" x="890" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="progress" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Progress Tab" vertex="1">
+          <mxGeometry height="60" width="150" x="1080" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="settings" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Settings Tab" vertex="1">
+          <mxGeometry height="60" width="150" x="550" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="menu" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Plus Menu" vertex="1">
+          <mxGeometry height="60" width="150" x="1250" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="manual" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Preset Foods / Manual Entry" vertex="1">
+          <mxGeometry height="60" width="240" x="1350" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="camera" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Camera Screen" vertex="1">
+          <mxGeometry height="60" width="160" x="1170" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="nutrition" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Nutrition Detail Screen" vertex="1">
+          <mxGeometry height="60" width="210" x="1130" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="editProfile" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Edit Profile" vertex="1">
+          <mxGeometry height="60" width="160" x="990" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="editNutrients" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Edit Nutrients" vertex="1">
+          <mxGeometry height="60" width="160" x="470" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="apiKey" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Gemini API Key" vertex="1">
+          <mxGeometry height="60" width="150" x="820" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="appearance" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Appearance" vertex="1">
+          <mxGeometry height="60" width="150" x="650" y="470" as="geometry" />
+        </mxCell>
+        <mxCell id="targetsEdit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Change Targets" vertex="1">
+          <mxGeometry height="60" width="160" x="610" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="presetSettings" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Preset Foods Settings" vertex="1">
+          <mxGeometry height="60" width="200" x="390" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="saveMeal" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Save meal to Room" vertex="1">
+          <mxGeometry height="60" width="170" x="1360" y="610" as="geometry" />
+        </mxCell>
+        <mxCell id="updateUi" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" value="Update Home / Targets / Progress" vertex="1">
+          <mxGeometry height="60" width="220" x="1240" y="740" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="start" style="endArrow=block;html=1;" target="splash">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="splash" style="endArrow=block;html=1;" target="decision1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="decision1" style="endArrow=block;html=1;" target="onboarding1" value="No">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="onboarding1" style="endArrow=block;html=1;" target="onboarding2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="onboarding2" style="endArrow=block;html=1;" target="main">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="decision1" style="endArrow=block;html=1;" target="main" value="Yes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="main" style="endArrow=block;html=1;" target="home">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="main" style="endArrow=block;html=1;" target="targets">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="main" style="endArrow=block;html=1;" target="progress">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="main" style="endArrow=block;html=1;" target="settings">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="main" style="endArrow=block;html=1;" target="menu">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="menu" style="endArrow=block;html=1;" target="manual">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="menu" style="endArrow=block;html=1;" target="camera">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e14" edge="1" parent="1" source="camera" style="endArrow=block;html=1;" target="nutrition">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" edge="1" parent="1" source="settings" style="endArrow=block;html=1;" target="editProfile">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" edge="1" parent="1" source="settings" style="endArrow=block;html=1;" target="editNutrients">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" edge="1" parent="1" source="settings" style="endArrow=block;html=1;" target="apiKey">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" edge="1" parent="1" source="settings" style="endArrow=block;html=1;" target="appearance">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" edge="1" parent="1" source="editNutrients" style="endArrow=block;html=1;" target="targetsEdit">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" edge="1" parent="1" source="editNutrients" style="endArrow=block;html=1;" target="presetSettings">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" edge="1" parent="1" source="manual" style="endArrow=block;html=1;" target="saveMeal">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" edge="1" parent="1" source="saveMeal" style="endArrow=block;html=1;" target="updateUi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e23" edge="1" parent="1" source="nutrition" style="endArrow=block;html=1;" target="updateUi">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

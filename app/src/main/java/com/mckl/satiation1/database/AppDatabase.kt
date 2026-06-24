@@ -171,8 +171,17 @@ interface MealDao {
     @Insert
     suspend fun insertMealLog(mealLog: MealLog): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertMealLog(mealLog: MealLog): Long
+
     @Insert
     suspend fun insertMealItems(items: List<MealItem>): List<Long>
+
+    @Query("DELETE FROM meal_items WHERE mealId = :mealId")
+    suspend fun deleteMealItemsForMeal(mealId: Long)
+
+    @Query("DELETE FROM meal_logs WHERE mealId = :mealId")
+    suspend fun deleteMealLog(mealId: Long)
 
     @Transaction
     @Query(
@@ -216,6 +225,9 @@ interface MealDao {
         """
     )
     fun getDailyMealSummaries(startInclusive: Long, endInclusive: Long): Flow<List<DailyMealSummary>>
+
+    @Query("SELECT MIN(loggedAtEpochMillis) FROM meal_logs")
+    fun getEarliestMealLoggedAt(): Flow<Long?>
 
     @Query(
         """

@@ -1,0 +1,46 @@
+<mxfile host="app.diagrams.net" agent="Codex">
+  <diagram id="erd" name="ERD">
+    <mxGraphModel dx="1414" dy="1998" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1200" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="userProfile" parent="1" style="shape=swimlane;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;UserProfile&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;userId (PK)&lt;br&gt;name&lt;br&gt;pronouns&lt;br&gt;startWeightKg&lt;br&gt;currentWeightKg&lt;br&gt;heightCm" vertex="1">
+          <mxGeometry height="220" width="240" x="80" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="appSettings" parent="1" style="shape=swimlane;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;AppSettings&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;settingsId (PK)&lt;br&gt;geminiApiKey&lt;br&gt;themePreference&lt;br&gt;calorieTarget&lt;br&gt;proteinTargetGrams&lt;br&gt;carbsTargetGrams&lt;br&gt;fatsTargetGrams" vertex="1">
+          <mxGeometry height="260" width="260" x="380" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mealLog" parent="1" style="shape=swimlane;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;MealLog&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;mealId (PK)&lt;br&gt;loggedAtEpochMillis&lt;br&gt;sourceType&lt;br&gt;totalCalories&lt;br&gt;totalProteinGrams&lt;br&gt;totalCarbsGrams&lt;br&gt;totalFatsGrams&lt;br&gt;notes" vertex="1">
+          <mxGeometry height="270" width="270" x="1030" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="mealItem" parent="1" style="shape=swimlane;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;MealItem&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;itemId (PK)&lt;br&gt;mealId (FK)&lt;br&gt;name&lt;br&gt;category&lt;br&gt;calories&lt;br&gt;proteinGrams&lt;br&gt;carbsGrams&lt;br&gt;fatsGrams&lt;br&gt;confidence" vertex="1">
+          <mxGeometry height="290" width="270" x="680" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="weightLog" parent="1" style="shape=swimlane;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;WeightLog&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;weightLogId (PK)&lt;br&gt;loggedAtEpochMillis&lt;br&gt;weightKg" vertex="1">
+          <mxGeometry height="160" width="240" x="80" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="presetFood" parent="1" style="shape=swimlane;rounded=0;html=1;whiteSpace=wrap;" value="&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;PresetFood&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;presetFoodId (PK)&lt;br&gt;name&lt;br&gt;category&lt;br&gt;calories&lt;br&gt;proteinGrams&lt;br&gt;carbsGrams&lt;br&gt;fatsGrams&lt;br&gt;notes&lt;br&gt;updatedAtEpochMillis" vertex="1">
+          <mxGeometry height="280" width="270" x="680" y="460" as="geometry" />
+        </mxCell>
+        <mxCell id="relation1" edge="1" parent="1" source="mealLog" style="endArrow=ERmany;startArrow=ERone;startFill=0;endFill=0;html=1;" target="mealItem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="relation2label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" value="derived analytics" vertex="1">
+          <mxGeometry height="30" width="120" x="190" y="320" as="geometry" />
+        </mxCell>
+        <mxCell id="relation2" edge="1" parent="1" source="userProfile" style="dashed=1;endArrow=open;html=1;" target="weightLog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="relation3label" parent="1" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;" value="used for manual entry" vertex="1">
+          <mxGeometry height="30" width="150" x="820" y="400" as="geometry" />
+        </mxCell>
+        <mxCell id="relation3" edge="1" parent="1" source="presetFood" style="dashed=1;endArrow=open;html=1;" target="mealItem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="relation4" edge="1" parent="1" source="userProfile" style="dashed=1;endArrow=open;html=1;" target="appSettings">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

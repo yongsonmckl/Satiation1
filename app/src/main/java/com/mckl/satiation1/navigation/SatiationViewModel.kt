@@ -13,6 +13,7 @@ import com.mckl.satiation1.database.AppSettings
 import com.mckl.satiation1.database.FoodFrequencySummary
 import com.mckl.satiation1.database.MealItem
 import com.mckl.satiation1.database.MealLog
+import com.mckl.satiation1.database.MealWithItems
 import com.mckl.satiation1.database.PresetFood
 import com.mckl.satiation1.database.SatiationDatabase
 import com.mckl.satiation1.database.UserProfile
@@ -37,6 +38,8 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
 
     var capturedImage = mutableStateOf<Bitmap?>(null)
     var currentMainTab by mutableStateOf("home")
+    var progressTabSelectionNonce by mutableStateOf(0)
+    var editingMeal by mutableStateOf<MealWithItems?>(null)
 
     // Temporary memory for onboarding setup.
     var setupName = ""
@@ -93,6 +96,12 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = emptyList()
+    )
+
+    val earliestMealLoggedAt: StateFlow<Long?> = mealDao.getEarliestMealLoggedAt().stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = null
     )
 
     init {
@@ -179,6 +188,47 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
                 }
             }
         }
+    }
+
+    fun saveMeal(
+        mealLog: MealLog,
+        items: List<MealItem>
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            database.withTransaction {
+                if (mealLog.mealId == 0L) {
+                    val mealId = mealDao.insertMealLog(mealLog)
+                    if (items.isNotEmpty()) {
+                        mealDao.insertMealItems(items.map { it.copy(mealId = mealId) })
+                    }
+                } else {
+                    mealDao.upsertMealLog(mealLog)
+                    mealDao.deleteMealItemsForMeal(mealLog.mealId)
+                    if (items.isNotEmpty()) {
+                        mealDao.insertMealItems(items.map { it.copy(mealId = mealLog.mealId) })
+                    }
+                }
+            }
+        }
+    }
+
+    fun deleteMeal(mealId: Long) {
+        viewModelScope.launch(Dispatchers.IO) {
+            mealDao.deleteMealLog(mealId)
+        }
+    }
+
+    fun beginMealEdit(meal: MealWithItems) {
+        editingMeal = meal
+    }
+
+    fun clearMealDraft() {
+        editingMeal = null
+    }
+
+    fun openProgressRoot() {
+        currentMainTab = "progress"
+        progressTabSelectionNonce += 1
     }
 
     fun getMealsForRange(startInclusive: Long, endInclusive: Long) =

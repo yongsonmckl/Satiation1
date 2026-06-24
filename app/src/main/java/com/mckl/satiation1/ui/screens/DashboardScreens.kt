@@ -1,17 +1,23 @@
 package com.mckl.satiation1.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Arrangement
@@ -21,12 +27,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -39,6 +47,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
@@ -49,7 +58,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DateRangePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -66,6 +77,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberDateRangePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -88,14 +100,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -131,6 +148,13 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
     val coroutineScope = rememberCoroutineScope()
     val userProfile by viewModel.userProfile.collectAsState()
     val currentTab = viewModel.currentMainTab
+    val openMealEditor: (MealWithItems) -> Unit = { meal ->
+        viewModel.beginMealEdit(meal)
+        rootNavController.navigate("manual_entry")
+    }
+    val deleteMealEntry: (MealWithItems) -> Unit = { meal ->
+        viewModel.deleteMeal(meal.meal.mealId)
+    }
     val colorScheme = MaterialTheme.colorScheme
     val addMenuScrimAlpha by animateFloatAsState(
         targetValue = if (showAddMenu) 0.4f else 0f,
@@ -175,12 +199,13 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(colorScheme.surface)
-                    .padding(bottom = 15.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 10.dp)
             ) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(30.dp),
+                        .padding(horizontal = 30.dp, vertical = 24.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -218,7 +243,7 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                         )
                     }
 
-                    IconButton(onClick = { viewModel.currentMainTab = "progress" }) {
+                    IconButton(onClick = { viewModel.openProgressRoot() }) {
                         Icon(
                             Icons.Default.DateRange,
                             contentDescription = "Progress",
@@ -252,14 +277,24 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                 when (tab) {
                     "home" -> HomeScreen(
                         viewModel = viewModel,
+                        onEditMeal = openMealEditor,
+                        onDeleteMeal = deleteMealEntry,
                         onNavigateToCheckmark = { viewModel.currentMainTab = "checkmark" },
                         onOpenMenu = {
                             setIsAddMenuMounted(true)
                             setShowAddMenu(true)
                         }
                     )
-                    "checkmark" -> CheckmarkScreen(viewModel)
-                    "progress" -> ProgressScreen(viewModel)
+                    "checkmark" -> CheckmarkScreen(
+                        viewModel,
+                        onEditMeal = openMealEditor,
+                        onDeleteMeal = deleteMealEntry
+                    )
+                    "progress" -> ProgressScreen(
+                        viewModel,
+                        onEditMeal = openMealEditor,
+                        onDeleteMeal = deleteMealEntry
+                    )
                     "profile" -> SettingsHubScreen(rootNavController, viewModel)
                 }
             }
@@ -281,7 +316,8 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                     .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp))
                     .background(colorScheme.surface)
                     .padding(24.dp)
-                    .padding(bottom = 32.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 20.dp)
             ) {
                 Text(
                     "Add Entry",
@@ -305,6 +341,7 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                         coroutineScope.launch {
                             setShowAddMenu(false)
                             delay(240)
+                            viewModel.clearMealDraft()
                             rootNavController.navigate("manual_entry")
                         }
                     }
@@ -335,6 +372,8 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
 @Composable
 fun HomeScreen(
     viewModel: SatiationViewModel,
+    onEditMeal: (MealWithItems) -> Unit,
+    onDeleteMeal: (MealWithItems) -> Unit,
     onNavigateToCheckmark: () -> Unit,
     onOpenMenu: () -> Unit
 ) {
@@ -416,7 +455,11 @@ fun HomeScreen(
             }
         } else {
             items(todayMeals) { meal ->
-                MealCard(meal)
+                MealCard(
+                    meal,
+                    onEdit = { onEditMeal(meal) },
+                    onDelete = { onDeleteMeal(meal) }
+                )
             }
         }
     }
@@ -537,7 +580,11 @@ fun SettingsHubScreen(rootNavController: NavController, viewModel: SatiationView
 }
 
 @Composable
-fun CheckmarkScreen(viewModel: SatiationViewModel) {
+fun CheckmarkScreen(
+    viewModel: SatiationViewModel,
+    onEditMeal: (MealWithItems) -> Unit,
+    onDeleteMeal: (MealWithItems) -> Unit
+) {
     val todayRange = remember { currentDayRangeMillis() }
     val todayMacros by viewModel.getDailyMacroTotals(todayRange.first, todayRange.second).collectAsState(initial = emptyList())
     val todayMeals by viewModel.getMealsForRange(todayRange.first, todayRange.second).collectAsState(initial = emptyList())
@@ -583,7 +630,11 @@ fun CheckmarkScreen(viewModel: SatiationViewModel) {
                 }
             } else {
                 items(todayMeals) { meal ->
-                    MealCard(meal)
+                    MealCard(
+                        meal,
+                        onEdit = { onEditMeal(meal) },
+                        onDelete = { onDeleteMeal(meal) }
+                    )
                 }
             }
         }
@@ -593,25 +644,55 @@ fun CheckmarkScreen(viewModel: SatiationViewModel) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProgressScreen(viewModel: SatiationViewModel) {
+fun ProgressScreen(
+    viewModel: SatiationViewModel,
+    onEditMeal: (MealWithItems) -> Unit,
+    onDeleteMeal: (MealWithItems) -> Unit
+) {
     val todayStart = remember { startOfDayMillis(System.currentTimeMillis()) }
     var selectedDayStart by rememberSaveable { mutableStateOf(todayStart) }
-    var rangeDays by rememberSaveable { mutableIntStateOf(30) }
+    var rangeStartDay by rememberSaveable { mutableStateOf(addDays(todayStart, -6)) }
+    var rangeEndDay by rememberSaveable { mutableStateOf(todayStart) }
+    var progressDestination by rememberSaveable { mutableStateOf("overview") }
     var showCalendarDialog by remember { mutableStateOf(false) }
     var showAnnotationDialog by remember { mutableStateOf(false) }
     var pendingAnnotation by remember { mutableStateOf("") }
+    val progressResetToken = viewModel.progressTabSelectionNonce
+    val pageAnimationKey = remember(progressDestination, progressResetToken) {
+        "$progressDestination-$progressResetToken"
+    }
 
-    val rangeStart = remember(selectedDayStart, rangeDays) { addDays(selectedDayStart, -(rangeDays - 1)) }
-    val rangeEnd = remember(selectedDayStart) { endOfDayMillis(selectedDayStart) }
-    val weekStart = remember(selectedDayStart) { startOfWeekMillis(selectedDayStart) }
-    val rangeDayStarts = remember(rangeStart, rangeDays) { dayStartSeries(rangeStart, rangeDays) }
-    val weekDayStarts = remember(weekStart) { dayStartSeries(weekStart, 7) }
+    var animatePageIn by remember { mutableStateOf(false) }
+    val pageAlpha by animateFloatAsState(
+        targetValue = if (animatePageIn) 1f else 0f,
+        animationSpec = tween(220),
+        label = "ProgressPageAlpha"
+    )
+
+    fun applyRange(startDay: Long, endDay: Long) {
+        val normalizedStart = startOfDayMillis(minOf(startDay, endDay))
+        val normalizedEnd = startOfDayMillis(minOf(maxOf(startDay, endDay), todayStart))
+        rangeStartDay = normalizedStart
+        rangeEndDay = normalizedEnd
+        selectedDayStart = selectedDayStart.coerceIn(normalizedStart, normalizedEnd)
+    }
+
+    fun openCalendarDestination() {
+        applyRange(addDays(todayStart, -6), todayStart)
+        selectedDayStart = todayStart
+        progressDestination = "calendar"
+    }
+
+    val rangeStart = rangeStartDay
+    val rangeEnd = remember(rangeEndDay) { endOfDayMillis(rangeEndDay) }
+    val rangeDayStarts = remember(rangeStartDay, rangeEndDay) { dayStartSeriesBetween(rangeStartDay, rangeEndDay) }
 
     val appSettings by viewModel.appSettings.collectAsState()
     val weightHistory by viewModel.weightHistory.collectAsState()
     val currentBmi by viewModel.currentBmi.collectAsState()
     val chartAnnotations by viewModel.chartAnnotations.collectAsState()
     val topFoods by viewModel.topFoods.collectAsState()
+    val earliestMealLoggedAt by viewModel.earliestMealLoggedAt.collectAsState()
     val macroHistory by viewModel.getDailyMacroTotals(rangeStart, rangeEnd).collectAsState(initial = emptyList())
     val mealSummaries by viewModel.getDailyMealSummaries(rangeStart, rangeEnd).collectAsState(initial = emptyList())
     val selectedDayMeals by viewModel
@@ -627,18 +708,9 @@ fun ProgressScreen(viewModel: SatiationViewModel) {
         )
     }
     val snapshotsByStart = remember(rangeSnapshots) { rangeSnapshots.associateBy { it.startMillis } }
-    val weekSnapshots = remember(weekDayStarts, snapshotsByStart, weightHistory) {
-        weekDayStarts.map { dayStart ->
-            progressSnapshotForDay(
-                dayStart = dayStart,
-                snapshotsByStart = snapshotsByStart,
-                weightHistory = weightHistory
-            )
-        }
-    }
-    val selectedDay = rangeSnapshots.lastOrNull() ?: progressSnapshotForDay(
+    val selectedDay = progressSnapshotForDay(
         dayStart = selectedDayStart,
-        snapshotsByStart = emptyMap(),
+        snapshotsByStart = snapshotsByStart,
         weightHistory = weightHistory
     )
     val selectedAnnotations = chartAnnotations[selectedDay.dayKey].orEmpty()
@@ -649,7 +721,8 @@ fun ProgressScreen(viewModel: SatiationViewModel) {
     val averageCalories = remember(rangeSnapshots) {
         if (rangeSnapshots.isEmpty()) 0.0 else rangeSnapshots.sumOf { it.totalCalories } / rangeSnapshots.size
     }
-    val currentMealStreak = remember(rangeSnapshots) { currentMealLoggingStreak(rangeSnapshots) }
+    val currentLoggingStreak = remember(rangeSnapshots) { currentLoggingStreak(rangeSnapshots) }
+    val bestLoggingStreak = remember(rangeSnapshots) { longestLoggingStreak(rangeSnapshots) }
     val highestCalorieDay = remember(rangeSnapshots) {
         rangeSnapshots.filter { it.totalCalories > 0.0 }.maxByOrNull { it.totalCalories }
     }
@@ -672,146 +745,342 @@ fun ProgressScreen(viewModel: SatiationViewModel) {
             weightHistory.isNotEmpty() ||
             topFoods.isNotEmpty()
     }
+    val weekdayMealPattern = remember(rangeSnapshots) { buildWeekdayMealPattern(rangeSnapshots) }
     val colorScheme = MaterialTheme.colorScheme
-    val listState = rememberLazyListState()
+    val earliestTrackedDay = remember(earliestMealLoggedAt, weightHistory) {
+        listOfNotNull(
+            earliestMealLoggedAt?.let(::startOfDayMillis),
+            weightHistory.minOfOrNull { startOfDayMillis(it.loggedAtEpochMillis) }
+        ).minOrNull()
+    }
+    val canShowAllTime = earliestTrackedDay != null
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
-            contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Progress", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = colorScheme.onBackground)
-                    Text(
-                        "Browse one week at a time, change the analytics range, and inspect calories, macros, meals, and weight without leaving this page.",
-                        color = colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            item {
-                ProgressCalendarCard(
-                    rangeSnapshots = rangeSnapshots,
-                    weekSnapshots = weekSnapshots,
-                    selectedDay = selectedDay,
-                    rangeDays = rangeDays,
-                    annotationCounts = chartAnnotations.mapValues { it.value.size },
-                    onSelectDay = { selectedDayStart = minOf(it, todayStart) },
-                    onOpenCalendar = { showCalendarDialog = true },
-                    onPreviousWeek = { selectedDayStart = addDays(selectedDayStart, -7) },
-                    onNextWeek = { selectedDayStart = minOf(addDays(selectedDayStart, 7), todayStart) },
-                    onJumpToToday = { selectedDayStart = todayStart },
-                    onChangeRange = { rangeDays = it }
-                )
-            }
-            item {
-                ProgressHighlightsCard(
-                    trackedDays = trackedDays,
-                    totalMeals = totalMeals,
-                    averageCalories = averageCalories,
-                    currentMealStreak = currentMealStreak,
-                    latestWeight = rangeLatestWeight,
-                    currentBmi = currentBmi,
-                    favoriteFood = topFoods.firstOrNull()?.name,
-                    highestCalorieDay = highestCalorieDay
-                )
-            }
-            if (!hasAnalyticsData) {
-                item {
-                    AnalyticsEmptyStateCard(
-                        title = "No analytics yet",
-                        message = "Log a meal or add a weight entry to populate the dashboard. The calendar, charts, and trend cards will update automatically."
-                    )
-                }
-            }
-            item {
-                MacroSplitCard(
-                    proteinGrams = rangeProtein,
-                    carbsGrams = rangeCarbs,
-                    fatsGrams = rangeFats,
-                    rangeLabel = formatDateRangeLabel(rangeStart, rangeEnd)
-                )
-            }
-            item {
-                FavoriteFoodsCard(topFoods = topFoods)
-            }
-            item {
-                WeightTrendCard(
-                    weightHistory = rangeWeightHistory,
-                    rangeLabel = formatDateRangeLabel(rangeStart, rangeEnd),
-                    latestWeight = rangeLatestWeight,
-                    weightDelta = rangeWeightDelta
-                )
-            }
-            item {
-                SelectedDayOverviewCard(
-                    selectedDay = selectedDay,
-                    currentBmi = currentBmi,
-                    calorieTarget = appSettings?.calorieTarget ?: 2500.0,
-                    proteinTarget = appSettings?.proteinTargetGrams ?: 120.0,
-                    carbsTarget = appSettings?.carbsTargetGrams ?: 300.0,
-                    fatsTarget = appSettings?.fatsTargetGrams ?: 70.0
-                )
-            }
-            item {
-                AnnotationCard(
-                    selectedDayLabel = selectedDay.longLabel,
-                    annotations = selectedAnnotations,
-                    onAddAnnotation = {
-                        pendingAnnotation = ""
-                        showAnnotationDialog = true
-                    },
-                    onDeleteAnnotation = { index ->
-                        viewModel.deleteChartAnnotation(selectedDay.dayKey, index)
-                    }
-                )
-            }
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+    LaunchedEffect(pageAnimationKey) {
+        animatePageIn = false
+        delay(40)
+        animatePageIn = true
+    }
+
+    LaunchedEffect(progressResetToken) {
+        progressDestination = "overview"
+    }
+
+    BackHandler(enabled = progressDestination != "overview") {
+        progressDestination = "overview"
+    }
+
+    when (progressDestination) {
+        "overview" -> {
+            val listState = rememberLazyListState()
+
+            Box(modifier = Modifier.fillMaxSize().graphicsLayer(alpha = pageAlpha)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text("Meals for ${selectedDay.longLabel}", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
-                        Text(
-                            "Review everything logged on the selected day.",
-                            color = colorScheme.onSurfaceVariant,
-                            fontSize = 13.sp
-                        )
-                        if (selectedDayMeals.isEmpty()) {
-                            EmptyMealsCard()
-                        } else {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                selectedDayMeals.forEach { meal ->
-                                    MealCard(meal)
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 0) {
+                            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text("Progress", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = colorScheme.onBackground)
+                                Text(
+                                    "Choose the calendar view for date-based charts or the stats view for trends, weight, and favorite foods.",
+                                    color = colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    if (!hasAnalyticsData) {
+                        item {
+                            ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 1) {
+                                AnalyticsEmptyStateCard(
+                                    title = "No analytics yet",
+                                    message = "Log a meal or add a weight entry to populate the calendar and stats pages."
+                                )
+                            }
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(
+                            animationKey = pageAnimationKey,
+                            staggerIndex = if (hasAnalyticsData) 1 else 2
+                        ) {
+                            ProgressDestinationCard(
+                                title = "Calendar",
+                                description = "Open the calendar range view and inspect calories and macros by day.",
+                                onClick = { openCalendarDestination() }
+                            ) {
+                                if (rangeSnapshots.any { it.totalCalories > 0.0 }) {
+                                    CalorieRangeChart(
+                                        daySnapshots = rangeSnapshots,
+                                        selectedDay = selectedDay,
+                                        interactive = false,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(172.dp)
+                                    )
+                                } else {
+                                    SparseTrendState(
+                                        title = "Calendar view is ready",
+                                        message = "Calories, macro split, markers, and meals will appear here once data is logged."
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(
+                            animationKey = pageAnimationKey,
+                            staggerIndex = if (hasAnalyticsData) 2 else 3
+                        ) {
+                            ProgressDestinationCard(
+                                title = "Stats",
+                                description = "Open weight trends, favorite foods, and habit summaries that complement the calendar view.",
+                                onClick = { progressDestination = "stats" }
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    TrendRow("Favorite Food", topFoods.firstOrNull()?.name ?: "No data yet")
+                                    TrendRow("Latest Weight", rangeLatestWeight?.let(::formatWeightKg) ?: "No entries")
+                                    TrendRow("Meals in Range", totalMeals.toString())
+                                    TrendRow("Tracked Days", trackedDays.toString())
                                 }
                             }
                         }
                     }
                 }
+                PassiveScrollbar(listState = listState)
             }
         }
-        PassiveScrollbar(listState = listState)
+        "calendar" -> {
+            val listState = rememberLazyListState()
+
+            Box(modifier = Modifier.fillMaxSize().graphicsLayer(alpha = pageAlpha)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 0) {
+                            ProgressPageHeader(
+                                title = "Calendar",
+                                subtitle = "Choose a live date range, then inspect calorie and macro charts by day.",
+                                onBack = { progressDestination = "overview" }
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 1) {
+                            ProgressCalendarBrowserCard(
+                                rangeStartDay = rangeStartDay,
+                                rangeEndDay = rangeEndDay,
+                                onOpenCalendar = { showCalendarDialog = true },
+                                currentDayLabel = formatLongDayLabel(todayStart),
+                                onQuickRangeSelected = { preset ->
+                                    when (preset) {
+                                        "week" -> applyRange(addDays(todayStart, -6), todayStart)
+                                        "month" -> applyRange(addDays(todayStart, -29), todayStart)
+                                        "all_time" -> earliestTrackedDay?.let { applyRange(it, todayStart) }
+                                        "year" -> applyRange(addDays(todayStart, -364), todayStart)
+                                    }
+                                    selectedDayStart = todayStart
+                                },
+                                showAllTime = canShowAllTime
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 2) {
+                            CalorieTrendCard(
+                                daySnapshots = rangeSnapshots,
+                                selectedDay = selectedDay,
+                                rangeLabel = formatDateRangeLabel(rangeStartDay, rangeEnd),
+                                onSelectDay = { selectedDayStart = it.startMillis }
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 3) {
+                            MacroSplitCard(
+                                proteinGrams = rangeProtein,
+                                carbsGrams = rangeCarbs,
+                                fatsGrams = rangeFats,
+                                rangeLabel = formatDateRangeLabel(rangeStartDay, rangeEnd)
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 4) {
+                            SelectedDayOverviewCard(
+                                selectedDay = selectedDay,
+                                currentBmi = currentBmi,
+                                calorieTarget = appSettings?.calorieTarget ?: 2500.0,
+                                proteinTarget = appSettings?.proteinTargetGrams ?: 120.0,
+                                carbsTarget = appSettings?.carbsTargetGrams ?: 300.0,
+                                fatsTarget = appSettings?.fatsTargetGrams ?: 70.0
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 5) {
+                            AnnotationCard(
+                                selectedDayLabel = selectedDay.longLabel,
+                                annotations = selectedAnnotations,
+                                onAddAnnotation = {
+                                    pendingAnnotation = ""
+                                    showAnnotationDialog = true
+                                },
+                                onDeleteAnnotation = { index ->
+                                    viewModel.deleteChartAnnotation(selectedDay.dayKey, index)
+                                }
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 6) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text("Meals for ${selectedDay.longLabel}", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                                    Text(
+                                        "Review everything logged on the selected day.",
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontSize = 13.sp
+                                    )
+                                    if (selectedDayMeals.isEmpty()) {
+                                        EmptyMealsCard()
+                                    } else {
+                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            selectedDayMeals.forEach { meal ->
+                                                MealCard(
+                                                    meal,
+                                                    onEdit = { onEditMeal(meal) },
+                                                    onDelete = { onDeleteMeal(meal) }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                PassiveScrollbar(listState = listState)
+            }
+        }
+        "stats" -> {
+            val listState = rememberLazyListState()
+
+            Box(modifier = Modifier.fillMaxSize().graphicsLayer(alpha = pageAlpha)) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 0) {
+                            ProgressPageHeader(
+                                title = "Stats",
+                                subtitle = "Weight, favorite foods, and broader patterns live here. Range-based charts follow the selected calendar dates.",
+                                onBack = { progressDestination = "overview" }
+                            )
+                        }
+                    }
+                    if (!hasAnalyticsData) {
+                        item {
+                            ProgressAnimatedSection(animationKey = pageAnimationKey, staggerIndex = 1) {
+                                AnalyticsEmptyStateCard(
+                                    title = "No stats yet",
+                                    message = "Log meals or weight entries to populate favorite foods, trends, and habit charts."
+                                )
+                            }
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(
+                            animationKey = pageAnimationKey,
+                            staggerIndex = if (hasAnalyticsData) 1 else 2
+                        ) {
+                            ProgressHighlightsCard(
+                                trackedDays = trackedDays,
+                                totalMeals = totalMeals,
+                                averageCalories = averageCalories,
+                                currentLoggingStreak = currentLoggingStreak,
+                                bestLoggingStreak = bestLoggingStreak,
+                                latestWeight = rangeLatestWeight,
+                                currentBmi = currentBmi,
+                                favoriteFood = topFoods.firstOrNull()?.name,
+                                highestCalorieDay = highestCalorieDay
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(
+                            animationKey = pageAnimationKey,
+                            staggerIndex = if (hasAnalyticsData) 2 else 3
+                        ) {
+                            WeightTrendCard(
+                                weightHistory = rangeWeightHistory,
+                                rangeLabel = formatDateRangeLabel(rangeStartDay, rangeEnd),
+                                latestWeight = rangeLatestWeight,
+                                weightDelta = rangeWeightDelta
+                            )
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(
+                            animationKey = pageAnimationKey,
+                            staggerIndex = if (hasAnalyticsData) 3 else 4
+                        ) {
+                            FavoriteFoodsCard(topFoods = topFoods)
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(
+                            animationKey = pageAnimationKey,
+                            staggerIndex = if (hasAnalyticsData) 4 else 5
+                        ) {
+                            WeekdayMealPatternCard(
+                                pattern = weekdayMealPattern,
+                                rangeLabel = formatDateRangeLabel(rangeStartDay, rangeEnd)
+                            )
+                        }
+                    }
+                }
+                PassiveScrollbar(listState = listState)
+            }
+        }
     }
 
     if (showCalendarDialog) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedDayStart)
+        val datePickerState = rememberDateRangePickerState(
+            initialSelectedStartDateMillis = rangeStartDay,
+            initialSelectedEndDateMillis = rangeEndDay
+        )
         DatePickerDialog(
             onDismissRequest = { showCalendarDialog = false },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        datePickerState.selectedDateMillis?.let { pickedDate ->
-                            selectedDayStart = minOf(startOfDayMillis(pickedDate), todayStart)
+                        datePickerState.selectedStartDateMillis?.let { pickedStart ->
+                            val pickedEnd = datePickerState.selectedEndDateMillis ?: pickedStart
+                            applyRange(startOfDayMillis(pickedStart), startOfDayMillis(pickedEnd))
                         }
                         showCalendarDialog = false
                     }
                 ) {
-                    Text("Use Date")
+                    Text("Use Range")
                 }
             },
             dismissButton = {
@@ -820,7 +1089,18 @@ fun ProgressScreen(viewModel: SatiationViewModel) {
                 }
             }
         ) {
-            DatePicker(state = datePickerState)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    formatLiveRangeSelection(
+                        datePickerState.selectedStartDateMillis,
+                        datePickerState.selectedEndDateMillis
+                    ),
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    color = colorScheme.onSurface,
+                    fontWeight = FontWeight.Medium
+                )
+                DateRangePicker(state = datePickerState)
+            }
         }
     }
 
@@ -923,7 +1203,7 @@ fun LegacyProgressScreen(viewModel: SatiationViewModel) {
         daySnapshots.sumOf { it.mealCount }
     }
     val currentMealStreak = remember(daySnapshots) {
-        currentMealLoggingStreak(daySnapshots)
+        currentLoggingStreak(daySnapshots)
     }
     val highestCalorieDay = remember(daySnapshots) {
         daySnapshots
@@ -1205,16 +1485,10 @@ fun EditProfileScreen(navController: NavController, viewModel: SatiationViewMode
             onBack = { navController.popBackStack() }
         )
         SettingsListEntry(
-            title = "Change Name",
-            description = "Edit your display name",
+            title = "Change Name & Pronouns",
+            description = "Edit your display name and how the app refers to you",
             containerColor = panelColor,
             onClick = { navController.navigate("edit_name") }
-        )
-        SettingsListEntry(
-            title = "Change Pronouns",
-            description = "Edit how the app refers to you",
-            containerColor = panelColor,
-            onClick = { navController.navigate("edit_pronouns") }
         )
         SettingsListEntry(
             title = "Change Height",
@@ -1469,55 +1743,26 @@ fun AppearanceScreen(navController: NavController, viewModel: SatiationViewModel
 @Composable
 fun EditNameScreen(navController: NavController, viewModel: SatiationViewModel) {
     val userProfile by viewModel.userProfile.collectAsState()
-    var editValue by remember { mutableStateOf(userProfile?.name.orEmpty()) }
+    var name by remember { mutableStateOf(userProfile?.name.orEmpty()) }
+    var pronouns by remember { mutableStateOf(userProfile?.pronouns.orEmpty()) }
 
-    LaunchedEffect(userProfile?.name) {
-        editValue = userProfile?.name.orEmpty()
+    LaunchedEffect(userProfile?.name, userProfile?.pronouns) {
+        name = userProfile?.name.orEmpty()
+        pronouns = userProfile?.pronouns.orEmpty()
     }
 
     Column(modifier = Modifier.fillMaxSize().padding(24.dp).statusBarsPadding()) {
-        ScreenHeader(title = "Change Name", onBack = { navController.popBackStack() })
+        ScreenHeader(title = "Change Name & Pronouns", onBack = { navController.popBackStack() })
         OutlinedTextField(
-            value = editValue,
-            onValueChange = { editValue = it },
+            value = name,
+            onValueChange = { name = it },
             label = { Text("Name") },
             modifier = Modifier.fillMaxWidth()
         )
-        Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = {
-                userProfile?.let { profile ->
-                    viewModel.saveProfile(
-                        name = editValue,
-                        startWeightKg = profile.startWeightKg,
-                        currentWeightKg = profile.currentWeightKg,
-                        pronouns = profile.pronouns,
-                        heightCm = profile.heightCm
-                    )
-                    navController.popBackStack()
-                }
-            },
-            modifier = Modifier.fillMaxWidth().height(56.dp)
-        ) {
-            Text("Save Name")
-        }
-    }
-}
-
-@Composable
-fun EditPronounsScreen(navController: NavController, viewModel: SatiationViewModel) {
-    val userProfile by viewModel.userProfile.collectAsState()
-    var editValue by remember { mutableStateOf(userProfile?.pronouns.orEmpty()) }
-
-    LaunchedEffect(userProfile?.pronouns) {
-        editValue = userProfile?.pronouns.orEmpty()
-    }
-
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp).statusBarsPadding()) {
-        ScreenHeader(title = "Change Pronouns", onBack = { navController.popBackStack() })
+        Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(
-            value = editValue,
-            onValueChange = { editValue = it },
+            value = pronouns,
+            onValueChange = { pronouns = it },
             label = { Text("Pronouns") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -1526,10 +1771,10 @@ fun EditPronounsScreen(navController: NavController, viewModel: SatiationViewMod
             onClick = {
                 userProfile?.let { profile ->
                     viewModel.saveProfile(
-                        name = profile.name,
+                        name = name,
                         startWeightKg = profile.startWeightKg,
                         currentWeightKg = profile.currentWeightKg,
-                        pronouns = editValue,
+                        pronouns = pronouns,
                         heightCm = profile.heightCm
                     )
                     navController.popBackStack()
@@ -1537,9 +1782,14 @@ fun EditPronounsScreen(navController: NavController, viewModel: SatiationViewMod
             },
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text("Save Pronouns")
+            Text("Save Changes")
         }
     }
+}
+
+@Composable
+fun EditPronounsScreen(navController: NavController, viewModel: SatiationViewModel) {
+    EditNameScreen(navController, viewModel)
 }
 
 @Composable
@@ -1698,6 +1948,7 @@ private fun MetricSliderScreen(
             .background(backgroundColor)
             .padding(24.dp)
             .statusBarsPadding()
+            .navigationBarsPadding()
     ) {
         ScreenHeader(title = title, onBack = onBack, lightContent = true)
         Spacer(modifier = Modifier.height(40.dp))
@@ -1885,9 +2136,11 @@ private fun SettingsOptionRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: SatiationViewModel) {
     val presetFoods by viewModel.presetFoods.collectAsState()
+    val editingMeal = viewModel.editingMeal
     val colorScheme = MaterialTheme.colorScheme
     var editingPreset by remember { mutableStateOf<PresetFood?>(null) }
     var mealName by remember { mutableStateOf("") }
@@ -1897,7 +2150,43 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
     var protein by remember { mutableStateOf("") }
     var carbs by remember { mutableStateOf("") }
     var fats by remember { mutableStateOf("") }
+    val todayStart = remember { startOfDayMillis(System.currentTimeMillis()) }
+    var useCurrentDate by rememberSaveable(editingMeal?.meal?.mealId) { mutableStateOf(true) }
+    var selectedLogDay by rememberSaveable(editingMeal?.meal?.mealId) { mutableLongStateOf(todayStart) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+
+    LaunchedEffect(editingMeal?.meal?.mealId) {
+        val mealToEdit = editingMeal
+        if (mealToEdit == null) {
+            editingPreset = null
+            mealName = ""
+            category = ""
+            notes = ""
+            calories = ""
+            protein = ""
+            carbs = ""
+            fats = ""
+            useCurrentDate = true
+            selectedLogDay = todayStart
+        } else {
+            val primaryItem = mealToEdit.items.firstOrNull()
+            mealName = primaryItem?.name ?: mealToEdit.items.joinToString { it.name }
+            category = primaryItem?.category.orEmpty()
+            notes = mealToEdit.meal.notes.orEmpty()
+            calories = mealToEdit.meal.totalCalories.toInt().toString()
+            protein = mealToEdit.meal.totalProteinGrams.toInt().toString()
+            carbs = mealToEdit.meal.totalCarbsGrams.toInt().toString()
+            fats = mealToEdit.meal.totalFatsGrams.toInt().toString()
+            selectedLogDay = startOfDayMillis(mealToEdit.meal.loggedAtEpochMillis)
+            useCurrentDate = selectedLogDay == todayStart
+        }
+    }
+
+    BackHandler {
+        viewModel.clearMealDraft()
+        navController.popBackStack()
+    }
 
     Box(
         modifier = Modifier
@@ -1915,17 +2204,79 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(bottom = 12.dp)
                 ) {
-                    IconButton(onClick = { navController.popBackStack() }, modifier = Modifier.offset(x = (-12).dp)) {
+                    IconButton(
+                        onClick = {
+                            viewModel.clearMealDraft()
+                            navController.popBackStack()
+                        },
+                        modifier = Modifier.offset(x = (-12).dp)
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colorScheme.onBackground)
                     }
-                    Text("Preset Foods / Manual Entry", fontSize = 28.sp, fontWeight = FontWeight.Bold, color = colorScheme.onBackground)
+                    Text(
+                        if (editingMeal == null) "Preset Foods / Manual Entry" else "Edit Meal",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorScheme.onBackground
+                    )
                 }
             }
             item {
                 Text(
-                    "Log a meal directly into Room, or reuse a saved preset food when offline or when scanning is unavailable.",
+                    if (editingMeal == null) {
+                        "Log a meal directly into Room, or reuse a saved preset food when offline or when scanning is unavailable."
+                    } else {
+                        "Update the meal details, macros, notes, and logging date for this entry."
+                    },
                     color = colorScheme.onSurfaceVariant
                 )
+            }
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text("Logging Date", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                                Text(
+                                    if (useCurrentDate) {
+                                        "This meal will be saved to today."
+                                    } else {
+                                        "Selected day: ${formatLongDayLabel(selectedLogDay)}"
+                                    },
+                                    color = colorScheme.onSurfaceVariant,
+                                    fontSize = 13.sp
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Checkbox(
+                                    checked = useCurrentDate,
+                                    onCheckedChange = { checked ->
+                                        useCurrentDate = checked
+                                        if (checked) {
+                                            selectedLogDay = todayStart
+                                        }
+                                    }
+                                )
+                                Text("Use Current Date", color = colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                            }
+                        }
+                        if (!useCurrentDate) {
+                            OutlinedButton(onClick = { showDatePicker = true }) {
+                                Text("Choose Date")
+                            }
+                        }
+                    }
+                }
             }
             item {
                 OutlinedTextField(
@@ -1973,8 +2324,18 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
                         val trimmedMealName = mealName.trim()
 
                         if (trimmedMealName.isNotBlank()) {
+                            val now = System.currentTimeMillis()
+                            val referenceTime = editingMeal?.meal?.loggedAtEpochMillis ?: now
+                            val referenceTimeOfDay = (referenceTime - startOfDayMillis(referenceTime))
+                                .coerceIn(0L, 86_399_999L)
+                            val loggedAt = if (useCurrentDate) {
+                                now
+                            } else {
+                                selectedLogDay + referenceTimeOfDay
+                            }
                             val mealLog = MealLog(
-                                loggedAtEpochMillis = System.currentTimeMillis(),
+                                mealId = editingMeal?.meal?.mealId ?: 0,
+                                loggedAtEpochMillis = loggedAt,
                                 sourceType = "manual",
                                 totalCalories = parsedCalories,
                                 totalProteinGrams = parsedProtein,
@@ -1983,7 +2344,7 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
                                 notes = notes.trim().ifEmpty { null }
                             )
                             val item = MealItem(
-                                mealId = 0,
+                                mealId = editingMeal?.meal?.mealId ?: 0,
                                 name = trimmedMealName,
                                 category = category.trim().ifEmpty { null },
                                 calories = parsedCalories,
@@ -1991,13 +2352,14 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
                                 carbsGrams = parsedCarbs,
                                 fatsGrams = parsedFats
                             )
-                            viewModel.insertMeal(mealLog, listOf(item))
+                            viewModel.saveMeal(mealLog, listOf(item))
+                            viewModel.clearMealDraft()
                             navController.popBackStack()
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp)
                 ) {
-                    Text("Save Meal")
+                    Text(if (editingMeal == null) "Save Meal" else "Update Meal")
                 }
             }
             item {
@@ -2034,13 +2396,42 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
         }
         PassiveScrollbar(listState = listState)
     }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedLogDay)
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedLogDay = startOfDayMillis(it) }
+                        showDatePicker = false
+                    }
+                ) {
+                    Text("Use Date")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 @Composable
-private fun MealCard(meal: MealWithItems) {
+private fun MealCard(
+    meal: MealWithItems,
+    onEdit: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null
+) {
     val itemSummary = meal.items.joinToString { it.name }
     val title = itemSummary.ifBlank { "Meal" }
     val colorScheme = MaterialTheme.colorScheme
+    var showDeleteConfirmation by remember(meal.meal.mealId) { mutableStateOf(false) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -2048,7 +2439,30 @@ private fun MealCard(meal: MealWithItems) {
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(title, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    title,
+                    fontWeight = FontWeight.Bold,
+                    color = colorScheme.onSurface,
+                    modifier = Modifier.weight(1f)
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    onEdit?.let {
+                        TextButton(onClick = it) {
+                            Text("Edit")
+                        }
+                    }
+                    onDelete?.let {
+                        TextButton(onClick = { showDeleteConfirmation = true }) {
+                            Text("Delete", color = Color(0xFFD64A4A))
+                        }
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(6.dp))
             Text(formatTime(meal.meal.loggedAtEpochMillis), color = colorScheme.onSurfaceVariant, fontSize = 13.sp)
             Spacer(modifier = Modifier.height(10.dp))
@@ -2065,6 +2479,31 @@ private fun MealCard(meal: MealWithItems) {
             }
         }
     }
+
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Delete Meal?") },
+            text = {
+                Text("This will remove this meal from the day. Do you want to continue?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                        onDelete?.invoke()
+                    }
+                ) {
+                    Text("Delete", color = Color(0xFFD64A4A))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 }
 
 private data class ProgressDaySnapshot(
@@ -2079,6 +2518,16 @@ private data class ProgressDaySnapshot(
     val fatsGrams: Double,
     val weightKg: Double?,
     val isToday: Boolean
+)
+
+private data class WeekdayMealPattern(
+    val label: String,
+    val mealCount: Int
+)
+
+private data class ChartTooltipData(
+    val title: String,
+    val value: String
 )
 
 private fun progressSnapshotForDay(
@@ -2105,125 +2554,181 @@ private fun progressSnapshotForDay(
 }
 
 @Composable
-private fun ProgressCalendarCard(
-    rangeSnapshots: List<ProgressDaySnapshot>,
-    weekSnapshots: List<ProgressDaySnapshot>,
-    selectedDay: ProgressDaySnapshot,
-    rangeDays: Int,
-    annotationCounts: Map<String, Int>,
-    onSelectDay: (Long) -> Unit,
-    onOpenCalendar: () -> Unit,
-    onPreviousWeek: () -> Unit,
-    onNextWeek: () -> Unit,
-    onJumpToToday: () -> Unit,
-    onChangeRange: (Int) -> Unit
+private fun ProgressDestinationCard(
+    title: String,
+    description: String,
+    onClick: () -> Unit,
+    content: @Composable () -> Unit
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val rangeLabel = if (rangeSnapshots.isEmpty()) {
-        formatDateRangeLabel(selectedDay.startMillis, endOfDayMillis(selectedDay.startMillis))
-    } else {
-        formatDateRangeLabel(rangeSnapshots.first().startMillis, endOfDayMillis(selectedDay.startMillis))
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(title, fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                    Text(description, color = colorScheme.onSurfaceVariant, fontSize = 13.sp)
+                }
+                Icon(
+                    Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = colorScheme.onSurfaceVariant
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun ProgressPageHeader(title: String, subtitle: String, onBack: () -> Unit) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onBack, modifier = Modifier.offset(x = (-12).dp)) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = colorScheme.onBackground
+                )
+            }
+            Text(title, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = colorScheme.onBackground)
+        }
+        Text(subtitle, color = colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+private fun ProgressAnimatedSection(
+    animationKey: Any,
+    staggerIndex: Int,
+    content: @Composable () -> Unit
+) {
+    var animateIn by remember(animationKey) { mutableStateOf(false) }
+    val alpha by animateFloatAsState(
+        targetValue = if (animateIn) 1f else 0f,
+        animationSpec = tween(durationMillis = 180, delayMillis = staggerIndex * 55),
+        label = "ProgressSectionAlpha$staggerIndex"
+    )
+    val scale by animateFloatAsState(
+        targetValue = if (animateIn) 1f else 0.96f,
+        animationSpec = tween(durationMillis = 210, delayMillis = staggerIndex * 55),
+        label = "ProgressSectionScale$staggerIndex"
+    )
+    val offsetY by animateDpAsState(
+        targetValue = if (animateIn) 0.dp else 18.dp,
+        animationSpec = tween(durationMillis = 210, delayMillis = staggerIndex * 55),
+        label = "ProgressSectionOffset$staggerIndex"
+    )
+
+    LaunchedEffect(animationKey) {
+        animateIn = false
+        delay(32)
+        animateIn = true
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .offset(y = offsetY)
+            .graphicsLayer(
+                alpha = alpha,
+                scaleX = scale,
+                scaleY = scale
+            )
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun ProgressCalendarBrowserCard(
+    rangeStartDay: Long,
+    rangeEndDay: Long,
+    onOpenCalendar: () -> Unit,
+    currentDayLabel: String,
+    onQuickRangeSelected: (String) -> Unit,
+    showAllTime: Boolean
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val todayStart = remember { startOfDayMillis(System.currentTimeMillis()) }
+    val quickRangeSelection = remember(rangeStartDay, rangeEndDay, showAllTime, todayStart) {
+        when {
+            rangeEndDay != todayStart -> null
+            rangeStartDay == addDays(todayStart, -6) -> "week"
+            rangeStartDay == addDays(todayStart, -29) -> "month"
+            showAllTime -> "all_time"
+            rangeStartDay == addDays(todayStart, -364) -> "year"
+            else -> null
+        }
     }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Calendar", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                    Text("Calendar", fontWeight = FontWeight.Bold, color = colorScheme.onSurface, fontSize = 16.sp)
                     Text(
-                        "$rangeLabel | $rangeDays day range",
+                        formatDateRangeLabel(rangeStartDay, endOfDayMillis(rangeEndDay)),
                         color = colorScheme.onSurfaceVariant,
                         fontSize = 13.sp
                     )
+                    Text(
+                        "Current Day: $currentDayLabel",
+                        color = colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
                 }
                 OutlinedButton(onClick = onOpenCalendar) {
-                    Text("Pick Date")
+                    Text("Choose Range", fontSize = 13.sp)
                 }
             }
-
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Calories Logged", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
-                if (rangeSnapshots.any { it.totalCalories > 0.0 }) {
-                    CalorieRangeChart(
-                        daySnapshots = rangeSnapshots,
-                        selectedDay = selectedDay,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(190.dp)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            rangeSnapshots.firstOrNull()?.compactLabel.orEmpty(),
-                            color = colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            "Selected: ${selectedDay.compactLabel} | ${formatCalories(selectedDay.totalCalories)}",
-                            color = colorScheme.onSurface,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            rangeSnapshots.lastOrNull()?.compactLabel.orEmpty(),
-                            color = colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp
-                        )
-                    }
-                } else {
-                    SparseTrendState(
-                        title = "No calories logged in this range",
-                        message = "Use the buttons below to switch weeks or widen the range. The chart fills in as soon as meals are logged."
-                    )
-                }
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedButton(onClick = onPreviousWeek) { Text("Previous Week") }
-                TextButton(onClick = onJumpToToday) { Text("Today") }
-                OutlinedButton(onClick = onNextWeek) { Text("Next Week") }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                listOf(7, 14, 30, 90).forEach { preset ->
+                Box(modifier = Modifier.weight(1f)) {
                     ProgressRangeButton(
-                        label = "$preset Days",
-                        isSelected = rangeDays == preset,
-                        onClick = { onChangeRange(preset) }
+                        label = "Past Week",
+                        labelFontSize = 11.sp,
+                        isSelected = quickRangeSelection == "week",
+                        onClick = { onQuickRangeSelected("week") }
                     )
                 }
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                weekSnapshots.forEach { day ->
-                    WeekDaySelectorPill(
-                        day = day,
-                        isSelected = day.dayKey == selectedDay.dayKey,
-                        hasMarker = (annotationCounts[day.dayKey] ?: 0) > 0,
-                        onClick = { onSelectDay(day.startMillis) }
+                Box(modifier = Modifier.weight(1f)) {
+                    ProgressRangeButton(
+                        label = "Past Month",
+                        labelFontSize = 11.sp,
+                        isSelected = quickRangeSelection == "month",
+                        onClick = { onQuickRangeSelected("month") }
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    ProgressRangeButton(
+                        label = if (showAllTime) "All Time" else "Past Year",
+                        labelFontSize = 11.sp,
+                        isSelected = quickRangeSelection == if (showAllTime) "all_time" else "year",
+                        onClick = { onQuickRangeSelected(if (showAllTime) "all_time" else "year") }
                     )
                 }
             }
@@ -2232,18 +2737,65 @@ private fun ProgressCalendarCard(
 }
 
 @Composable
-private fun ProgressRangeButton(label: String, isSelected: Boolean, onClick: () -> Unit) {
+private fun ProgressRangeButton(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    labelFontSize: TextUnit = 12.sp
+) {
     if (isSelected) {
-        Button(onClick = onClick) { Text(label) }
+        Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+            Text(label, fontSize = labelFontSize)
+        }
     } else {
-        OutlinedButton(onClick = onClick) { Text(label) }
+        OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+            Text(label, fontSize = labelFontSize)
+        }
     }
 }
 
 @Composable
-private fun WeekDaySelectorPill(
+private fun ChartTooltipCard(
+    tooltip: ChartTooltipData,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(tooltip.title, color = colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Text(tooltip.value, color = colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        }
+    }
+}
+
+@Composable
+private fun AnimatedChartTooltip(
+    tooltip: ChartTooltipData?,
+    modifier: Modifier = Modifier
+) {
+    AnimatedVisibility(
+        visible = tooltip != null,
+        enter = fadeIn(animationSpec = tween(180)),
+        exit = fadeOut(animationSpec = tween(180)),
+        modifier = modifier
+    ) {
+        tooltip?.let { ChartTooltipCard(tooltip = it) }
+    }
+}
+
+@Composable
+private fun RowScope.WeekDaySelectorPill(
     day: ProgressDaySnapshot,
     isSelected: Boolean,
+    isEnabled: Boolean,
     hasMarker: Boolean,
     onClick: () -> Unit
 ) {
@@ -2251,8 +2803,10 @@ private fun WeekDaySelectorPill(
 
     Card(
         modifier = Modifier
-            .width(84.dp)
-            .clickable(onClick = onClick),
+            .weight(1f)
+            .aspectRatio(1f)
+            .clickable(enabled = isEnabled, onClick = onClick)
+            .graphicsLayer { alpha = if (isEnabled) 1f else 0.5f },
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) colorScheme.primary.copy(alpha = 0.16f) else colorScheme.surfaceVariant
         ),
@@ -2262,24 +2816,81 @@ private fun WeekDaySelectorPill(
             null
         }
     ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (hasMarker) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 8.dp)
+                        .size(7.dp)
+                        .clip(CircleShape)
+                        .background(appGreen())
+                )
+            }
+
+            Column(
                 modifier = Modifier
-                    .size(7.dp)
-                    .clip(CircleShape)
-                    .background(if (hasMarker) appGreen() else Color.Transparent)
-            )
-            Text(formatWeekdayLabel(day.startMillis), color = colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            Text(formatDayOfMonth(day.startMillis), color = colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                    .align(Alignment.TopCenter)
+                    .padding(top = if (hasMarker) 14.dp else 10.dp, start = 2.dp, end = 2.dp, bottom = 2.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(0.dp)
+            ) {
+                Text(
+                    formatWeekdayLabel(day.startMillis),
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 8.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    formatDayOfMonth(day.startMillis),
+                    color = colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CalorieTrendCard(
+    daySnapshots: List<ProgressDaySnapshot>,
+    selectedDay: ProgressDaySnapshot,
+    rangeLabel: String,
+    onSelectDay: (ProgressDaySnapshot) -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Calories Logged", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
             Text(
-                if (day.totalCalories > 0.0) formatCalories(day.totalCalories) else "No data",
+                "Daily calories inside the selected range: $rangeLabel",
                 color = colorScheme.onSurfaceVariant,
-                fontSize = 11.sp
+                fontSize = 13.sp
             )
+            if (daySnapshots.any { it.totalCalories > 0.0 }) {
+                CalorieRangeChart(
+                    daySnapshots = daySnapshots,
+                    selectedDay = selectedDay,
+                    onSelectDay = onSelectDay,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(210.dp)
+                )
+                CalorieChartAxisLabels(daySnapshots = daySnapshots)
+            } else {
+                SparseTrendState(
+                    title = "No calories logged in this range",
+                    message = "Adjust the range or log meals to populate the trend chart."
+                )
+            }
         }
     }
 }
@@ -2288,39 +2899,128 @@ private fun WeekDaySelectorPill(
 private fun CalorieRangeChart(
     daySnapshots: List<ProgressDaySnapshot>,
     selectedDay: ProgressDaySnapshot,
+    onSelectDay: ((ProgressDaySnapshot) -> Unit)? = null,
+    interactive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val maxCalories = daySnapshots.maxOfOrNull { it.totalCalories }?.coerceAtLeast(1.0) ?: 1.0
 
-    Canvas(modifier = modifier) {
-        val slotWidth = size.width / daySnapshots.size.coerceAtLeast(1)
-        val baselineY = size.height - 14.dp.toPx()
-        val barWidth = (slotWidth * 0.62f).coerceAtLeast(4.dp.toPx())
-
-        drawLine(
-            color = colorScheme.outlineVariant.copy(alpha = 0.55f),
-            start = Offset(0f, baselineY),
-            end = Offset(size.width, baselineY),
-            strokeWidth = 2.dp.toPx()
-        )
-
-        daySnapshots.forEachIndexed { index, day ->
-            val left = (index * slotWidth) + ((slotWidth - barWidth) / 2f)
-            val barHeight = ((day.totalCalories / maxCalories).toFloat() * (baselineY - 16.dp.toPx())).coerceAtLeast(0f)
-            val top = baselineY - barHeight
-            val barColor = if (day.dayKey == selectedDay.dayKey) {
-                SatiationOrange
-            } else {
-                colorScheme.secondary.copy(alpha = if (day.totalCalories > 0.0) 0.7f else 0.2f)
+    var tooltipDayKey by remember(daySnapshots) { mutableStateOf<String?>(null) }
+    var chartSize by remember { mutableStateOf(IntSize.Zero) }
+    val tapModifier = if (interactive) {
+        Modifier.pointerInput(daySnapshots, chartSize) {
+            detectTapGestures { tapOffset ->
+                if (daySnapshots.isEmpty() || chartSize.width == 0) return@detectTapGestures
+                val slotWidth = chartSize.width / daySnapshots.size.coerceAtLeast(1).toFloat()
+                val baselineY = chartSize.height - 14.dp.toPx()
+                val barWidth = (slotWidth * 0.62f).coerceAtLeast(4.dp.toPx())
+                val chartHeight = baselineY - 16.dp.toPx()
+                val tappedIndex = (tapOffset.x / slotWidth).toInt().coerceIn(0, daySnapshots.lastIndex)
+                val day = daySnapshots[tappedIndex]
+                if (day.totalCalories <= 0.0) {
+                    tooltipDayKey = null
+                    return@detectTapGestures
+                }
+                val left = (tappedIndex * slotWidth) + ((slotWidth - barWidth) / 2f)
+                val barHeight = ((day.totalCalories / maxCalories).toFloat() * chartHeight).coerceAtLeast(0f)
+                val top = baselineY - barHeight
+                val tappedInsideBar = tapOffset.x in left..(left + barWidth) && tapOffset.y in top..baselineY
+                if (!tappedInsideBar) {
+                    tooltipDayKey = null
+                    return@detectTapGestures
+                }
+                tooltipDayKey = if (tooltipDayKey == day.dayKey) null else day.dayKey
+                onSelectDay?.invoke(day)
             }
+        }
+    } else {
+        Modifier
+    }
 
-            drawRoundRect(
-                color = barColor,
-                topLeft = Offset(left, top),
-                size = Size(barWidth, barHeight),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx(), 10.dp.toPx())
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { chartSize = it }
+                .then(tapModifier)
+        ) {
+            val slotWidth = size.width / daySnapshots.size.coerceAtLeast(1)
+            val baselineY = size.height - 14.dp.toPx()
+            val barWidth = (slotWidth * 0.62f).coerceAtLeast(4.dp.toPx())
+
+            drawLine(
+                color = colorScheme.outlineVariant.copy(alpha = 0.55f),
+                start = Offset(0f, baselineY),
+                end = Offset(size.width, baselineY),
+                strokeWidth = 2.dp.toPx()
             )
+
+            daySnapshots.forEachIndexed { index, day ->
+                val left = (index * slotWidth) + ((slotWidth - barWidth) / 2f)
+                val barHeight = ((day.totalCalories / maxCalories).toFloat() * (baselineY - 16.dp.toPx())).coerceAtLeast(0f)
+                val top = baselineY - barHeight
+                val isTooltipSelected = tooltipDayKey == day.dayKey
+                val barColor = if (day.totalCalories <= 0.0) {
+                    colorScheme.secondary.copy(alpha = 0.2f)
+                } else if (isTooltipSelected) {
+                    SatiationOrange.darken()
+                } else {
+                    SatiationOrange.copy(alpha = 0.68f)
+                }
+
+                drawRoundRect(
+                    color = barColor,
+                    topLeft = Offset(left, top),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx(), 10.dp.toPx())
+                )
+            }
+        }
+
+        AnimatedChartTooltip(
+            tooltip = daySnapshots.firstOrNull { it.dayKey == tooltipDayKey }?.let { day ->
+                ChartTooltipData(
+                    title = day.longLabel,
+                    value = formatCalories(day.totalCalories)
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun CalorieChartAxisLabels(daySnapshots: List<ProgressDaySnapshot>) {
+    if (daySnapshots.size > 14) {
+        return
+    }
+
+    val colorScheme = MaterialTheme.colorScheme
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(0.dp)
+    ) {
+        daySnapshots.forEach { day ->
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    formatWeekdayInitial(day.startMillis),
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 9.sp
+                )
+                Text(
+                    formatDayOfMonth(day.startMillis),
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 10.sp
+                )
+            }
         }
     }
 }
@@ -2330,7 +3030,8 @@ private fun ProgressHighlightsCard(
     trackedDays: Int,
     totalMeals: Int,
     averageCalories: Double,
-    currentMealStreak: Int,
+    currentLoggingStreak: Int,
+    bestLoggingStreak: Int,
     latestWeight: Double?,
     currentBmi: Double?,
     favoriteFood: String?,
@@ -2347,7 +3048,8 @@ private fun ProgressHighlightsCard(
             TrendRow("Tracked Days", trackedDays.toString())
             TrendRow("Meals Logged", totalMeals.toString())
             TrendRow("Average Calories", formatCalories(averageCalories))
-            TrendRow("Current Meal Streak", "$currentMealStreak day(s)")
+            TrendRow("Current Logging Streak", "$currentLoggingStreak day(s)")
+            TrendRow("Best Logging Streak", "$bestLoggingStreak day(s)")
             TrendRow("Favorite Food", favoriteFood ?: "No data yet")
             TrendRow("Latest Weight", latestWeight?.let(::formatWeightKg) ?: "No entries")
             TrendRow("Current BMI", currentBmi?.let { "%.1f".format(Locale.US, it) } ?: "Unavailable")
@@ -2411,26 +3113,61 @@ private fun MacroSplitPieChart(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val slices = listOf(
-        proteinGrams to appGreen(),
-        carbsGrams to DarkCarbsColor,
-        fatsGrams to DarkFatsColor
+        Triple("Protein", proteinGrams, appGreen()),
+        Triple("Carbs", carbsGrams, DarkCarbsColor),
+        Triple("Fats", fatsGrams, DarkFatsColor)
     )
-    val total = slices.sumOf { it.first }.coerceAtLeast(1.0)
+    val total = slices.sumOf { it.second }.coerceAtLeast(1.0)
+    var selectedSlice by remember(proteinGrams, carbsGrams, fatsGrams) { mutableStateOf<String?>(null) }
+    var chartSize by remember { mutableStateOf(IntSize.Zero) }
 
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Canvas(
             modifier = Modifier
                 .fillMaxHeight()
                 .fillMaxWidth()
+                .onSizeChanged { chartSize = it }
+                .pointerInput(slices, chartSize) {
+                    detectTapGestures { tapOffset ->
+                        if (chartSize == IntSize.Zero) return@detectTapGestures
+                        val width = chartSize.width.toFloat()
+                        val height = chartSize.height.toFloat()
+                        val diameter = minOf(width, height) * 0.82f
+                        val radius = diameter / 2f
+                        val center = Offset(width / 2f, height / 2f)
+                        val dx = tapOffset.x - center.x
+                        val dy = tapOffset.y - center.y
+                        val distance = kotlin.math.sqrt((dx * dx) + (dy * dy))
+
+                        if (distance > radius || distance < radius * 0.34f) {
+                            selectedSlice = null
+                            return@detectTapGestures
+                        }
+
+                        var angle = Math.toDegrees(kotlin.math.atan2(dy.toDouble(), dx.toDouble())).toFloat() + 90f
+                        if (angle < 0f) angle += 360f
+
+                        var runningAngle = 0f
+                        slices.filter { it.second > 0.0 }.forEach { (label, value, _) ->
+                            val sweepAngle = ((value / total) * 360.0).toFloat()
+                            if (angle in runningAngle..(runningAngle + sweepAngle)) {
+                                selectedSlice = if (selectedSlice == label) null else label
+                                return@detectTapGestures
+                            }
+                            runningAngle += sweepAngle
+                        }
+                        selectedSlice = null
+                    }
+                }
         ) {
             val diameter = size.minDimension * 0.82f
             val topLeft = Offset((size.width - diameter) / 2f, (size.height - diameter) / 2f)
             var startAngle = -90f
 
-            slices.filter { it.first > 0.0 }.forEach { (value, color) ->
+            slices.filter { it.second > 0.0 }.forEach { (label, value, color) ->
                 val sweepAngle = ((value / total) * 360.0).toFloat()
                 drawArc(
-                    color = color,
+                    color = if (selectedSlice == label) color.darken() else color,
                     startAngle = startAngle,
                     sweepAngle = sweepAngle,
                     useCenter = true,
@@ -2451,6 +3188,19 @@ private fun MacroSplitPieChart(
             Text("${total.toInt()}g", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
             Text("Total Macros", color = colorScheme.onSurfaceVariant, fontSize = 12.sp)
         }
+
+        AnimatedChartTooltip(
+            tooltip = slices.firstOrNull { it.first == selectedSlice }?.let { (label, value, _) ->
+                val percentage = ((value / total) * 100.0)
+                ChartTooltipData(
+                    title = label,
+                    value = "${formatMacroValue(value)} | ${"%.0f".format(Locale.US, percentage)}%"
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 8.dp)
+        )
     }
 }
 
@@ -2480,62 +3230,82 @@ private fun MacroLegendRow(label: String, value: Double, color: Color) {
 private fun FavoriteFoodsCard(topFoods: List<FoodFrequencySummary>) {
     val colorScheme = MaterialTheme.colorScheme
     val highestCount = topFoods.maxOfOrNull { it.occurrences }?.coerceAtLeast(1) ?: 1
+    var selectedFoodName by remember(topFoods) { mutableStateOf<String?>(null) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Favorite Foods", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
-            Text(
-                "All-time food frequency. This chart does not change with the selected date range.",
-                color = colorScheme.onSurfaceVariant,
-                fontSize = 13.sp
-            )
-            if (topFoods.isEmpty()) {
-                SparseTrendState(
-                    title = "No foods logged yet",
-                    message = "Once meals exist, the most frequently eaten foods will appear here."
+        Box {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Favorite Foods", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                Text(
+                    "All-time food frequency. This chart does not change with the selected date range.",
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp
                 )
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    topFoods.forEach { food ->
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                if (topFoods.isEmpty()) {
+                    SparseTrendState(
+                        title = "No foods logged yet",
+                        message = "Once meals exist, the most frequently eaten foods will appear here."
+                    )
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        topFoods.forEach { food ->
+                            val isSelected = selectedFoodName == food.name
+                            Column(
+                                modifier = Modifier.clickable {
+                                    selectedFoodName = if (isSelected) null else food.name
+                                },
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Text(food.name, color = colorScheme.onSurface, fontWeight = FontWeight.Medium)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(food.name, color = colorScheme.onSurface, fontWeight = FontWeight.Medium)
+                                    Text(
+                                        "${food.occurrences} time(s)",
+                                        color = colorScheme.onSurfaceVariant,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(12.dp)
+                                        .clip(RoundedCornerShape(999.dp))
+                                        .background(colorScheme.surfaceVariant)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth(food.occurrences / highestCount.toFloat())
+                                            .fillMaxHeight()
+                                            .background(if (isSelected) SatiationOrange.darken() else SatiationOrange)
+                                    )
+                                }
                                 Text(
-                                    "${food.occurrences} time(s)",
+                                    "${formatCalories(food.totalCalories)} total",
                                     color = colorScheme.onSurfaceVariant,
                                     fontSize = 12.sp
                                 )
                             }
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(12.dp)
-                                    .clip(RoundedCornerShape(999.dp))
-                                    .background(colorScheme.surfaceVariant)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(food.occurrences / highestCount.toFloat())
-                                        .fillMaxHeight()
-                                        .background(SatiationOrange)
-                                )
-                            }
-                            Text(
-                                "${formatCalories(food.totalCalories)} total",
-                                color = colorScheme.onSurfaceVariant,
-                                fontSize = 12.sp
-                            )
                         }
                     }
                 }
             }
+            AnimatedChartTooltip(
+                tooltip = topFoods.firstOrNull { it.name == selectedFoodName }?.let { food ->
+                    ChartTooltipData(
+                        title = food.name,
+                        value = "${food.occurrences} time(s) | ${formatCalories(food.totalCalories)}"
+                    )
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 12.dp)
+            )
         }
     }
 }
@@ -2595,56 +3365,200 @@ private fun WeightTrendChart(weightHistory: List<WeightLog>, modifier: Modifier 
     val maxWeight = weightHistory.maxOfOrNull { it.weightKg } ?: 1.0
     val spread = (maxWeight - minWeight).takeIf { it > 0.0 } ?: 1.0
 
-    Canvas(modifier = modifier) {
-        if (weightHistory.isEmpty()) return@Canvas
+    var selectedWeightLogId by remember(weightHistory) { mutableStateOf<Long?>(null) }
+    var chartSize by remember { mutableStateOf(IntSize.Zero) }
 
-        val leftPadding = 8.dp.toPx()
-        val rightPadding = 8.dp.toPx()
-        val topPadding = 12.dp.toPx()
-        val bottomPadding = 18.dp.toPx()
-        val chartWidth = size.width - leftPadding - rightPadding
-        val chartHeight = size.height - topPadding - bottomPadding
+    Box(modifier = modifier) {
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { chartSize = it }
+                .pointerInput(weightHistory, chartSize) {
+                    detectTapGestures { tapOffset ->
+                        if (weightHistory.isEmpty() || chartSize.width == 0) return@detectTapGestures
+                        val leftPadding = 8.dp.toPx()
+                        val rightPadding = 8.dp.toPx()
+                        val chartWidth = chartSize.width - leftPadding - rightPadding
+                        val closestIndex = weightHistory.indices.minByOrNull { index ->
+                            val pointX = if (weightHistory.size == 1) {
+                                leftPadding + (chartWidth / 2f)
+                            } else {
+                                leftPadding + (index / weightHistory.lastIndex.toFloat()) * chartWidth
+                            }
+                            kotlin.math.abs(tapOffset.x - pointX)
+                        } ?: return@detectTapGestures
+                        val closestPointX = if (weightHistory.size == 1) {
+                            leftPadding + (chartWidth / 2f)
+                        } else {
+                            leftPadding + (closestIndex / weightHistory.lastIndex.toFloat()) * chartWidth
+                        }
+                        val touchRadius = 20.dp.toPx()
+                        if (kotlin.math.abs(tapOffset.x - closestPointX) > touchRadius) {
+                            selectedWeightLogId = null
+                            return@detectTapGestures
+                        }
+                        val entry = weightHistory[closestIndex]
+                        selectedWeightLogId = if (selectedWeightLogId == entry.weightLogId) null else entry.weightLogId
+                    }
+                }
+        ) {
+            if (weightHistory.isEmpty()) return@Canvas
 
-        drawLine(
-            color = colorScheme.outlineVariant.copy(alpha = 0.55f),
-            start = Offset(leftPadding, size.height - bottomPadding),
-            end = Offset(size.width - rightPadding, size.height - bottomPadding),
-            strokeWidth = 2.dp.toPx()
-        )
+            val leftPadding = 8.dp.toPx()
+            val rightPadding = 8.dp.toPx()
+            val topPadding = 12.dp.toPx()
+            val bottomPadding = 18.dp.toPx()
+            val chartWidth = size.width - leftPadding - rightPadding
+            val chartHeight = size.height - topPadding - bottomPadding
 
-        val points = weightHistory.mapIndexed { index, entry ->
-            val x = if (weightHistory.size == 1) {
-                leftPadding + (chartWidth / 2f)
-            } else {
-                leftPadding + (index / (weightHistory.lastIndex).toFloat()) * chartWidth
-            }
-            val yProgress = ((entry.weightKg - minWeight) / spread).toFloat()
-            val y = size.height - bottomPadding - (yProgress * chartHeight)
-            Offset(x, y)
-        }
-
-        points.zipWithNext().forEach { (start, end) ->
             drawLine(
-                color = SatiationOrange,
-                start = start,
-                end = end,
-                strokeWidth = 3.dp.toPx(),
-                cap = StrokeCap.Round
+                color = colorScheme.outlineVariant.copy(alpha = 0.55f),
+                start = Offset(leftPadding, size.height - bottomPadding),
+                end = Offset(size.width - rightPadding, size.height - bottomPadding),
+                strokeWidth = 2.dp.toPx()
             )
+
+            val points = weightHistory.mapIndexed { index, entry ->
+                val x = if (weightHistory.size == 1) {
+                    leftPadding + (chartWidth / 2f)
+                } else {
+                    leftPadding + (index / (weightHistory.lastIndex).toFloat()) * chartWidth
+                }
+                val yProgress = ((entry.weightKg - minWeight) / spread).toFloat()
+                val y = size.height - bottomPadding - (yProgress * chartHeight)
+                Offset(x, y)
+            }
+
+            points.zipWithNext().forEach { (start, end) ->
+                drawLine(
+                    color = SatiationOrange,
+                    start = start,
+                    end = end,
+                    strokeWidth = 3.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+
+            points.forEachIndexed { index, point ->
+                val isLatest = index == points.lastIndex
+                val isSelected = selectedWeightLogId == weightHistory[index].weightLogId
+                drawCircle(
+                    color = when {
+                        isSelected -> SatiationOrange.darken()
+                        isLatest -> latestPointColor
+                        else -> colorScheme.surface
+                    },
+                    radius = if (isSelected || isLatest) 5.dp.toPx() else 4.dp.toPx(),
+                    center = point
+                )
+                drawCircle(
+                    color = when {
+                        isSelected -> SatiationOrange.darken()
+                        isLatest -> latestPointColor
+                        else -> SatiationOrange
+                    },
+                    radius = if (isSelected || isLatest) 7.dp.toPx() else 6.dp.toPx(),
+                    center = point,
+                    style = Stroke(width = 2.dp.toPx())
+                )
+            }
         }
 
-        points.forEachIndexed { index, point ->
-            val isLatest = index == points.lastIndex
-            drawCircle(
-                color = if (isLatest) latestPointColor else colorScheme.surface,
-                radius = if (isLatest) 5.dp.toPx() else 4.dp.toPx(),
-                center = point
-            )
-            drawCircle(
-                color = if (isLatest) latestPointColor else SatiationOrange,
-                radius = if (isLatest) 7.dp.toPx() else 6.dp.toPx(),
-                center = point,
-                style = Stroke(width = 2.dp.toPx())
+        AnimatedChartTooltip(
+            tooltip = weightHistory.firstOrNull { it.weightLogId == selectedWeightLogId }?.let { entry ->
+                ChartTooltipData(
+                    title = formatLongDayLabel(entry.loggedAtEpochMillis),
+                    value = formatWeightKg(entry.weightKg)
+                )
+            },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .padding(top = 8.dp)
+        )
+    }
+}
+
+@Composable
+private fun WeekdayMealPatternCard(
+    pattern: List<WeekdayMealPattern>,
+    rangeLabel: String
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    val maxMeals = pattern.maxOfOrNull { it.mealCount }?.coerceAtLeast(1) ?: 1
+    var selectedWeekday by remember(pattern) { mutableStateOf<String?>(null) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+    ) {
+        Box {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Meal Logging Rhythm", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                Text(
+                    "Meals logged by weekday inside the selected range: $rangeLabel",
+                    color = colorScheme.onSurfaceVariant,
+                    fontSize = 13.sp
+                )
+                if (pattern.any { it.mealCount > 0 }) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        pattern.forEach { day ->
+                            val isSelected = selectedWeekday == day.label
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .clickable(enabled = day.mealCount > 0) {
+                                        selectedWeekday = if (isSelected) null else day.label
+                                    },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(
+                                    day.mealCount.toString(),
+                                    color = colorScheme.onSurface,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f),
+                                    contentAlignment = Alignment.BottomCenter
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .fillMaxHeight(day.mealCount / maxMeals.toFloat())
+                                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                            .background(if (isSelected) appGreen().darken() else appGreen())
+                                    )
+                                }
+                                Text(day.label, color = colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                } else {
+                    SparseTrendState(
+                        title = "No weekday pattern yet",
+                        message = "Log meals across a few days to reveal which weekdays carry most of your entries."
+                    )
+                }
+            }
+            AnimatedChartTooltip(
+                tooltip = pattern.firstOrNull { it.label == selectedWeekday }?.let { day ->
+                    ChartTooltipData(
+                        title = day.label,
+                        value = if (day.mealCount == 1) "1 meal logged" else "${day.mealCount} meals logged"
+                    )
+                },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 12.dp)
             )
         }
     }
@@ -3394,6 +4308,23 @@ private fun dayStartSeries(startMillis: Long, count: Int): List<Long> {
     }
 }
 
+private fun dayStartSeriesBetween(startMillis: Long, endMillis: Long): List<Long> {
+    val totalDays = daysBetweenInclusive(startMillis, endMillis)
+    return dayStartSeries(startOfDayMillis(startMillis), totalDays)
+}
+
+private fun daysBetweenInclusive(startMillis: Long, endMillis: Long): Int {
+    val safeStart = startOfDayMillis(minOf(startMillis, endMillis))
+    val safeEnd = startOfDayMillis(maxOf(startMillis, endMillis))
+    var count = 1
+    var cursor = safeStart
+    while (cursor < safeEnd) {
+        cursor = addDays(cursor, 1)
+        count += 1
+    }
+    return count
+}
+
 private fun trailingDayStartMillis(days: Int): List<Long> {
     val todayStart = startOfDayMillis(System.currentTimeMillis())
     val calendar = Calendar.getInstance().apply { timeInMillis = todayStart }
@@ -3441,16 +4372,51 @@ private fun buildProgressDaySnapshots(
     }
 }
 
-private fun currentMealLoggingStreak(daySnapshots: List<ProgressDaySnapshot>): Int {
+private fun currentLoggingStreak(daySnapshots: List<ProgressDaySnapshot>): Int {
     var streak = 0
     for (day in daySnapshots.asReversed()) {
-        if (day.mealCount > 0 || day.totalCalories > 0.0) {
+        if (dayHasLoggedData(day)) {
             streak += 1
         } else if (streak > 0) {
             break
         }
     }
     return streak
+}
+
+private fun longestLoggingStreak(daySnapshots: List<ProgressDaySnapshot>): Int {
+    var longest = 0
+    var current = 0
+
+    daySnapshots.forEach { day ->
+        if (dayHasLoggedData(day)) {
+            current += 1
+            if (current > longest) {
+                longest = current
+            }
+        } else {
+            current = 0
+        }
+    }
+
+    return longest
+}
+
+private fun dayHasLoggedData(day: ProgressDaySnapshot): Boolean {
+    return day.mealCount > 0 || day.totalCalories > 0.0 || day.weightKg != null
+}
+
+private fun buildWeekdayMealPattern(daySnapshots: List<ProgressDaySnapshot>): List<WeekdayMealPattern> {
+    val orderedWeekdays = dayStartSeries(startOfWeekMillis(System.currentTimeMillis()), 7)
+        .map(::formatWeekdayLabel)
+    return orderedWeekdays.map { label ->
+        WeekdayMealPattern(
+            label = label,
+            mealCount = daySnapshots
+                .filter { formatWeekdayLabel(it.startMillis) == label }
+                .sumOf { it.mealCount }
+        )
+    }
 }
 
 private fun dayKeyFromMillis(epochMillis: Long): String {
@@ -3469,6 +4435,10 @@ private fun formatWeekdayLabel(epochMillis: Long): String {
     return SimpleDateFormat("EEE", Locale.US).format(Date(epochMillis))
 }
 
+private fun formatWeekdayInitial(epochMillis: Long): String {
+    return SimpleDateFormat("EEEEE", Locale.US).format(Date(epochMillis))
+}
+
 private fun formatDayOfMonth(epochMillis: Long): String {
     return SimpleDateFormat("d", Locale.US).format(Date(epochMillis))
 }
@@ -3479,7 +4449,31 @@ private fun formatDateRangeLabel(startMillis: Long, endMillis: Long): String {
     return "$start to $end"
 }
 
+private fun formatCompactCalorieLabel(calories: Double): String {
+    return "${calories.toInt()} cal"
+}
+
+private fun formatLiveRangeSelection(startMillis: Long?, endMillis: Long?): String {
+    val start = startMillis?.let(::startOfDayMillis)
+    val end = endMillis?.let(::startOfDayMillis)
+    return when {
+        start == null -> "Choose a start and end date."
+        end == null -> "Start: ${formatLongDayLabel(start)}. Tap the same day again or choose an end date."
+        start == end -> "Showing ${formatLongDayLabel(start)} only."
+        else -> "Showing ${formatDateRangeLabel(start, endOfDayMillis(end))}."
+    }
+}
+
 private fun formatSignedWeightChange(weightDelta: Double): String {
     val prefix = if (weightDelta > 0) "+" else ""
     return prefix + formatWeightKg(weightDelta)
+}
+
+private fun Color.darken(multiplier: Float = 0.78f): Color {
+    return Color(
+        red = (red * multiplier).coerceIn(0f, 1f),
+        green = (green * multiplier).coerceIn(0f, 1f),
+        blue = (blue * multiplier).coerceIn(0f, 1f),
+        alpha = alpha
+    )
 }
