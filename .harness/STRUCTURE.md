@@ -32,7 +32,9 @@ This file is a compact map of the important project files.
 - `.harness/Phase 3-4/PHASE3P4.md`
   - Latest Phase 3 Progress interaction/polish report and emulator verification
 - `.harness/Phase 3-4/PHASE3TO4TASKLIST.md`
-  - Phase 3 closeout summary and current Phase 4 task list
+  - Phase 3 closeout summary and archived Phase 4 bridge notes
+- `.harness/Phase 3-4/PHASE4TASKLIST.md`
+  - Detailed Phase 4 implementation record, verification notes, and current handoff checklist
 - `.harness/Diagrams/use-case-diagram.drawio`
 - `.harness/Diagrams/activity-user-flow.drawio`
 - `.harness/Diagrams/erd.drawio`
@@ -53,7 +55,7 @@ Path:
 Files:
 - `MainActivity.kt`
   - App entry point
-  - Sets edge-to-edge/system UI behavior and loads the Compose app
+  - Sets edge-to-edge/system UI behavior, loads the Compose app, and now falls back to dark theme when no saved preference exists
 - `Constants.kt`
   - Shared colors and constant lists
 
@@ -86,6 +88,7 @@ Files:
     - `WeightLog`
     - `PresetFood`
   - Important caveat: currently uses destructive migration fallback
+  - `AppSettings.themePreference` now defaults to `dark` for fresh installs
 
 ## UI Screens
 
@@ -95,8 +98,10 @@ Path:
 Files:
 - `OnboardingScreens.kt`
   - Splash, staged profile onboarding, and body-metrics onboarding screens
+  - All onboarding screens now apply explicit status-bar and navigation-bar padding for cleaner edge-to-edge spacing
 - `DashboardScreens.kt`
   - Main container, tab content, manual entry, preset foods, daily targets, progress, settings, profile editing, nutrient editing, API key editing, and appearance UI
+  - Add menu now includes both camera-scan and direct import-photo AI scan entry points
   - Current Progress screen includes:
     - progress overview plus separate Calendar and Stats pages
     - built-in date range picker dialog
@@ -115,7 +120,20 @@ Files:
   - This is still the largest and highest-change file in the app
 - `CameraScreens.kt`
   - Camera preview screen and Gemini nutrition detail screen
-  - Current known limitation: preview exists, but real still-image capture/save-to-ViewModel flow is still incomplete
+  - Handles live preview, real still capture, manual import, scan review, reanalysis, edit-before-save, and AI persistence actions
+
+## AI Support
+
+Path:
+- `app/src/main/java/com/mckl/satiation1/ai/`
+
+Files:
+- `GeminiNutritionSupport.kt`
+  - Prompt contract, typed result models, parsing, validation, and UI-state helpers
+- `GeminiNutritionClient.kt`
+  - Runtime Gemini execution, preferred/fallback model selection, and transient retry handling
+- `ScanImageLoader.kt`
+  - Shared URI-to-Bitmap decode path for imported images
 
 ## Theme
 
@@ -150,10 +168,17 @@ Paths:
 Files:
 - `ExampleUnitTest.kt`
 - `ExampleInstrumentedTest.kt`
+- `GeminiNutritionSupportInstrumentedTest.kt`
+- `AiMealPersistenceInstrumentedTest.kt`
+- `ScanImageLoaderInstrumentedTest.kt`
+- `GeminiLiveScanInstrumentedTest.kt`
 
 Current state:
-- Only template test files exist
-- There is no meaningful automated regression coverage yet
+- Template tests still exist, but there is now meaningful instrumentation coverage for:
+  - Gemini parsing and validation
+  - imported-image decoding
+  - AI meal persistence
+  - live Gemini scan execution with runtime API key and image inputs
 
 ## Where To Look By Task
 
@@ -175,6 +200,9 @@ Current state:
   - `navigation/SatiationViewModel.kt`
 - Camera or Gemini changes:
   - `ui/screens/CameraScreens.kt`
+  - `ai/GeminiNutritionSupport.kt`
+  - `ai/GeminiNutritionClient.kt`
+  - `ai/ScanImageLoader.kt`
   - `navigation/SatiationViewModel.kt`
   - `database/AppDatabase.kt`
 - Project direction and user decisions:
@@ -187,9 +215,11 @@ Current state:
   - Largest UI file
   - Contains main tabs, manual logging, settings, preset foods, and most custom analytics UI
 - `app/src/main/java/com/mckl/satiation1/ui/screens/CameraScreens.kt`
-  - Gemini/camera flow is still incomplete here
+  - Large orchestration file for capture/import/analyze/review/save
 - `app/src/main/java/com/mckl/satiation1/database/AppDatabase.kt`
   - Central schema/DAO file
   - Destructive migration is still enabled
 - `app/src/main/java/com/mckl/satiation1/navigation/SatiationViewModel.kt`
   - Shared application logic and Room integration
+- `app/src/main/java/com/mckl/satiation1/ai/GeminiNutritionSupport.kt`
+  - Parser strictness and prompt contract directly affect live AI reliability

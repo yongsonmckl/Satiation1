@@ -12,7 +12,7 @@ Filament Lightbulbs Burn Brightest At Night
 
 ## Project Identity
 
-Satiation1 is a native Android nutrition and health tracking app for a capstone project. The app is written in Kotlin with Jetpack Compose and is intended to support meal logging, weight/profile tracking, data analysis dashboards, and AI-assisted food recognition through Gemini 1.5 Flash.
+Satiation1 is a native Android nutrition and health tracking app for a capstone project. The app is written in Kotlin with Jetpack Compose and is intended to support meal logging, weight/profile tracking, data analysis dashboards, and AI-assisted food recognition through Gemini-based image analysis.
 
 ## Verified Current Stack
 
@@ -21,7 +21,7 @@ Satiation1 is a native Android nutrition and health tracking app for a capstone 
 - Navigation: `androidx.navigation:navigation-compose:2.9.7`
 - State: shared `SatiationViewModel` extends `AndroidViewModel`
 - Database: Room 2.7.0 with KSP
-- Camera: CameraX 1.6.0 dependencies are present; current camera screen is still preview-only
+- Camera: CameraX 1.6.0 with live preview, still capture, and manual import flow
 - AI: `com.google.ai.client.generativeai:generativeai:0.9.0`
 - Charts:
   - Vico 1.13.0 dependency is still present
@@ -52,9 +52,12 @@ Satiation1 is a native Android nutrition and health tracking app for a capstone 
 ## Current Verified State
 
 - The app currently compiles
-- Build command tested repeatedly: `.\gradlew.bat :app:assembleDebug`
-- The app was recently smoke-tested on Android emulators `emulator-5556` and `emulator-5554`
-- `.harness/` is now tracked for project handoff notes/diagrams and implementation status
+- Verified build commands:
+  - `.\gradlew.bat :app:assembleDebug`
+  - `.\gradlew.bat :app:assembleAndroidTest`
+- Recent verification was run primarily on Android emulator `emulator-5554`
+- `.harness/` is now tracked for project handoff notes, diagrams, implementation status, and model handoff notes
+- Instrumentation coverage now exists for Gemini parsing, image decoding, AI persistence, and live Gemini scan checks
 
 ## Current Database Reality
 
@@ -139,6 +142,11 @@ Settings:
 - Appearance switching is implemented
 - Gemini API key editing is implemented
 
+Onboarding:
+- Splash, name, and weight onboarding screens now all apply both status-bar and navigation-bar padding
+- The onboarding weight screen no longer sits too close to the top edge under edge-to-edge mode
+- Onboarding padding and default-dark startup behavior were rechecked on `emulator-5554`
+
 Add menu:
 - Camera scan shortcut is present
 - Manual food selection shortcut is present
@@ -151,13 +159,28 @@ Add menu:
 
 ## Current Camera and Gemini Reality
 
-- Camera screen currently shows a live preview only
-- `Take Photo & Scan` still navigates forward without performing a real still-image capture
-- `SatiationViewModel.capturedImage` exists, but the camera screen still does not populate it
-- `NutritionDetailScreen` reads `viewModel.capturedImage.value` and the locally stored Gemini key
-- There is no hardcoded Gemini API key in source now
-- Gemini parsing is still optimistic and assumes strict JSON
-- AI scan results are not yet mapped into `MealLog` and `MealItem`
+- Camera flow now supports:
+  - live preview
+  - real still-image capture into app cache
+  - manual image import from gallery/files
+  - separate add-menu import-photo entry for debugging and normal use
+- `SatiationViewModel.capturedImage` is now the canonical shared image state for both camera capture and import
+- `NutritionDetailScreen` analyzes only the current shared captured image plus the locally stored Gemini key
+- There is no hardcoded Gemini API key in source
+- Gemini request execution now prefers `gemini-2.5-pro` and falls back to `gemini-2.5-flash` when the key or tier cannot use Pro
+- Transient 503/high-demand model failures are retried automatically
+- Gemini parsing is defensive:
+  - strips fences and noisy wrappers
+  - validates totals, items, names, and numeric fields
+  - rejects negative and non-finite values
+- AI scan results can be reviewed, edited, reanalyzed, retaken, or redirected into manual entry before save
+- Accepted AI scan results are now persisted into `MealLog` and `MealItem` with `sourceType = "ai_scan"`
+- A debug panel can show raw Gemini response text on the scan screen without exposing secrets
+
+Current operational risk:
+- Raw model outputs can still drift semantically between runs, especially around invisible rice and beverage sweetness
+- Parse failures from malformed live output are now retried inside `GeminiNutritionClient` before the UI receives a terminal failure
+- The hinted live path and repeated no-hint live path both passed on 2026-06-25 after the retry fix
 
 ## Development Rules For Future Work
 
@@ -171,18 +194,15 @@ Add menu:
 
 ## Known Current Gaps
 
-- CameraX still capture is not implemented end-to-end
-- Gemini scan/save flow is incomplete
 - Import/export is still missing
 - Notifications/reminders are still missing
 - Proper Room migrations are still missing
-- Automated test coverage is effectively not in place yet beyond template test files
 
 ## Known User Goals
 
 - Keep Room as the main persistence layer for meals, macros, weights, profile, settings, and analysis data
 - Keep the Progress dashboard rich and interactive
-- Complete Gemini 1.5 Flash food recognition end-to-end
+- Keep Gemini food recognition working end-to-end with manual image import as a first-class path
 - Keep the profile area as a fuller settings experience
 - Keep Gemini API key editable from settings only and stored locally on device
 - Prefer Vico only where it is still useful; do not force it into flows already handled better with custom Compose charts

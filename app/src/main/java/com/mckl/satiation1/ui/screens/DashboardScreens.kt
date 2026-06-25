@@ -331,6 +331,18 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                         coroutineScope.launch {
                             setShowAddMenu(false)
                             delay(240)
+                            viewModel.openCameraForPreview()
+                            rootNavController.navigate("camera")
+                        }
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Scan Food (Import Photo)") },
+                    modifier = Modifier.clickable {
+                        coroutineScope.launch {
+                            setShowAddMenu(false)
+                            delay(240)
+                            viewModel.openCameraForImport()
                             rootNavController.navigate("camera")
                         }
                     }
@@ -1711,7 +1723,7 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
 @Composable
 fun AppearanceScreen(navController: NavController, viewModel: SatiationViewModel) {
     val appSettings by viewModel.appSettings.collectAsState()
-    val currentPreference = appSettings?.themePreference ?: "light"
+    val currentPreference = appSettings?.themePreference ?: "dark"
     val panelColor = settingsPanelColor()
 
     Column(

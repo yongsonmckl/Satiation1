@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val sharedViewModel: SatiationViewModel = viewModel()
             val appSettings by sharedViewModel.appSettings.collectAsState()
-            val themePreference = appSettings?.themePreference ?: "system"
+            val themePreference = appSettings?.themePreference ?: "dark"
             val isDarkTheme = when (themePreference.lowercase()) {
                 "dark" -> true
                 "light" -> false

@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mckl.satiation1.ai.GeminiNutritionResult
 import com.mckl.satiation1.database.AppSettings
 import com.mckl.satiation1.database.FoodFrequencySummary
 import com.mckl.satiation1.database.MealItem
@@ -36,10 +37,16 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         private const val ANNOTATIONS_KEY = "chart_annotations"
     }
 
+    enum class CameraLaunchAction {
+        PREVIEW,
+        IMPORT
+    }
+
     var capturedImage = mutableStateOf<Bitmap?>(null)
     var currentMainTab by mutableStateOf("home")
     var progressTabSelectionNonce by mutableStateOf(0)
     var editingMeal by mutableStateOf<MealWithItems?>(null)
+    var pendingCameraLaunchAction by mutableStateOf(CameraLaunchAction.PREVIEW)
 
     // Temporary memory for onboarding setup.
     var setupName = ""
@@ -157,6 +164,28 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun setCapturedImage(bitmap: Bitmap) {
+        capturedImage.value = bitmap
+    }
+
+    fun clearCapturedImage() {
+        capturedImage.value = null
+    }
+
+    fun openCameraForPreview() {
+        pendingCameraLaunchAction = CameraLaunchAction.PREVIEW
+    }
+
+    fun openCameraForImport() {
+        pendingCameraLaunchAction = CameraLaunchAction.IMPORT
+    }
+
+    fun consumeCameraLaunchAction(): CameraLaunchAction {
+        val action = pendingCameraLaunchAction
+        pendingCameraLaunchAction = CameraLaunchAction.PREVIEW
+        return action
+    }
+
     fun logWeight(weightKg: Double, timestampMillis: Long = System.currentTimeMillis()) {
         if (weightKg <= 0.0) {
             return
@@ -181,12 +210,7 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         items: List<MealItem>
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            database.withTransaction {
-                val mealId = mealDao.insertMealLog(mealLog)
-                if (items.isNotEmpty()) {
-                    mealDao.insertMealItems(items.map { it.copy(mealId = mealId) })
-                }
-            }
+            persistMeal(mealLog, items, replaceExisting = false)
         }
     }
 
@@ -195,19 +219,47 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         items: List<MealItem>
     ) {
         viewModelScope.launch(Dispatchers.IO) {
-            database.withTransaction {
-                if (mealLog.mealId == 0L) {
-                    val mealId = mealDao.insertMealLog(mealLog)
-                    if (items.isNotEmpty()) {
-                        mealDao.insertMealItems(items.map { it.copy(mealId = mealId) })
-                    }
-                } else {
-                    mealDao.upsertMealLog(mealLog)
-                    mealDao.deleteMealItemsForMeal(mealLog.mealId)
-                    if (items.isNotEmpty()) {
-                        mealDao.insertMealItems(items.map { it.copy(mealId = mealLog.mealId) })
-                    }
+            persistMeal(mealLog, items, replaceExisting = true)
+        }
+    }
+
+    fun saveAiMeal(
+        result: GeminiNutritionResult,
+        loggedAtEpochMillis: Long = System.currentTimeMillis(),
+        onComplete: (Result<Unit>) -> Unit = {}
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val saveResult = runCatching {
+                val mealLog = MealLog(
+                    loggedAtEpochMillis = loggedAtEpochMillis,
+                    sourceType = "ai_scan",
+                    totalCalories = result.totalCalories,
+                    totalProteinGrams = result.totalProteinGrams,
+                    totalCarbsGrams = result.totalCarbsGrams,
+                    totalFatsGrams = result.totalFatsGrams,
+                    notes = result.notes
+                )
+                val items = result.items.map { item ->
+                    MealItem(
+                        mealId = 0,
+                        name = item.name,
+                        category = item.category,
+                        calories = item.calories,
+                        proteinGrams = item.proteinGrams,
+                        carbsGrams = item.carbsGrams,
+                        fatsGrams = item.fatsGrams,
+                        confidence = item.confidence
+                    )
                 }
+
+                persistMeal(mealLog, items, replaceExisting = false)
+            }
+
+            viewModelScope.launch {
+                if (saveResult.isSuccess) {
+                    clearCapturedImage()
+                }
+                onComplete(saveResult)
             }
         }
     }
@@ -334,8 +386,29 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         annotations.forEach { (dayKey, notes) ->
             val noteArray = JSONArray()
             notes.forEach { noteArray.put(it) }
-            root.put(dayKey, noteArray)
+        root.put(dayKey, noteArray)
         }
         analyticsPrefs.edit().putString(ANNOTATIONS_KEY, root.toString()).apply()
+    }
+
+    private suspend fun persistMeal(
+        mealLog: MealLog,
+        items: List<MealItem>,
+        replaceExisting: Boolean
+    ) {
+        database.withTransaction {
+            if (replaceExisting && mealLog.mealId != 0L) {
+                mealDao.upsertMealLog(mealLog)
+                mealDao.deleteMealItemsForMeal(mealLog.mealId)
+                if (items.isNotEmpty()) {
+                    mealDao.insertMealItems(items.map { it.copy(mealId = mealLog.mealId) })
+                }
+            } else {
+                val mealId = mealDao.insertMealLog(mealLog)
+                if (items.isNotEmpty()) {
+                    mealDao.insertMealItems(items.map { it.copy(mealId = mealId) })
+                }
+            }
+        }
     }
 }

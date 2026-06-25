@@ -39,7 +39,7 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun Satiation1Theme(
-    themePreference: String = "system",
+    themePreference: String = "dark",
     content: @Composable () -> Unit
 ) {
     val darkTheme = when (themePreference.lowercase()) {

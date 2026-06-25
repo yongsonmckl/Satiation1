@@ -36,7 +36,7 @@ data class AppSettings(
     val proteinTargetGrams: Double = 120.0,
     val carbsTargetGrams: Double = 300.0,
     val fatsTargetGrams: Double = 70.0,
-    val themePreference: String = "system"
+    val themePreference: String = "dark"
 )
 
 @Entity(
