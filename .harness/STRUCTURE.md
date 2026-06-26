@@ -1,51 +1,60 @@
 # Satiation1 Project Structure
 
-This file is a compact map of the important project files.
+This file is a compact map of the important project files. It should stay aligned with the real repository state, not older milestone layouts.
 
 ## Root
 
 - `README.md`
-  - Basic project description
+  - basic project description
 - `.gitignore`
   - Git ignore rules
 - `build.gradle.kts`
-  - Top-level Gradle plugin setup
+  - top-level Gradle plugin setup
 - `settings.gradle.kts`
   - Gradle project settings and repositories
 - `gradle/libs.versions.toml`
-  - Version catalog for dependencies and plugins
+  - version catalog for core plugin/library versions
 
 ## Harness
 
 - `.harness/AGENTS.md`
-  - Project-level operating notes and verified current state
+  - primary handover/source-of-truth notes
 - `.harness/PLAN.md`
-  - Feature plan, user decisions, implementation status, and handoff notes
+  - current implementation/verification status by phase
 - `.harness/STRUCTURE.md`
-  - This file
+  - this file
+- `.harness/Phase 567/PHASE567TASKLIST.md`
+  - detailed remaining-work and verification checklist for current open scope
 - `.harness/Phase 3-4/PHASE3P1.md`
-  - Phase 3 status summary
+  - archived early/mid Phase 3 snapshot
 - `.harness/Phase 3-4/PHASE3P2.md`
-  - Phase 3 follow-up patch report and test notes
+  - archived Phase 3 patch record
 - `.harness/Phase 3-4/PHASE3P3.md`
-  - Later Phase 3 refinement and emulator verification report
+  - archived Phase 3 refinement report
 - `.harness/Phase 3-4/PHASE3P4.md`
-  - Latest Phase 3 Progress interaction/polish report and emulator verification
+  - archived Phase 3 closeout/refinement report
 - `.harness/Phase 3-4/PHASE3TO4TASKLIST.md`
-  - Phase 3 closeout summary and archived Phase 4 bridge notes
+  - archived bridge note between completed Phase 3 and Phase 4 work
 - `.harness/Phase 3-4/PHASE4TASKLIST.md`
-  - Detailed Phase 4 implementation record, verification notes, and current handoff checklist
+  - archived detailed Phase 4 implementation and verification record
 - `.harness/Diagrams/use-case-diagram.drawio`
+  - conceptual use-case diagram; not exhaustive current feature coverage
 - `.harness/Diagrams/activity-user-flow.drawio`
+  - conceptual app-flow diagram; not an exact route graph
 - `.harness/Diagrams/erd.drawio`
+  - conceptual data model snapshot
 
 ## Android App Module
 
 - `app/build.gradle.kts`
-  - App module dependencies and Android configuration
-  - Contains Compose, Navigation, Room, CameraX, Vico, Gemini, and KSP setup
+  - app module dependencies and Android configuration
+  - Compose, Navigation, Room, CameraX, Gemini, schema export, and KSP setup
 - `app/src/main/AndroidManifest.xml`
-  - App manifest and camera permission declaration
+  - manifest
+  - camera, notifications, and boot permissions
+  - reminder receivers
+- `app/schemas/com.mckl.satiation1.database.SatiationDatabase/`
+  - exported Room schema snapshots for versions `5` and `6`
 
 ## Main Kotlin Package
 
@@ -54,10 +63,16 @@ Path:
 
 Files:
 - `MainActivity.kt`
-  - App entry point
-  - Sets edge-to-edge/system UI behavior, loads the Compose app, and now falls back to dark theme when no saved preference exists
+  - app entry point
+  - edge-to-edge/system UI behavior
+  - theme and accent application
+  - reminder channel setup and reminder sync
 - `Constants.kt`
-  - Shared colors and constant lists
+  - shared colors, labels, and constant lists
+- `DisplayPreferences.kt`
+  - unit conversion helpers
+  - date-formatting helpers
+  - shared display preference sync
 
 ## Navigation And App State
 
@@ -66,11 +81,15 @@ Path:
 
 Files:
 - `AppNavigation.kt`
-  - Top-level `NavHost`
-  - Defines onboarding, main app, camera, manual entry, profile/settings, nutrient, and appearance routes
+  - top-level `NavHost`
+  - onboarding, main app, camera, nutrition, manual entry, settings, history, advanced, and notification routes
 - `SatiationViewModel.kt`
-  - Shared app state
-  - Holds onboarding temp state, captured image state, Room flows, write helpers, BMI, weight history, top foods, and chart annotations
+  - shared app state
+  - onboarding temp state
+  - captured image state
+  - Room-backed flows and write helpers
+  - backup/import/export/clear behavior
+  - chart annotations via shared preferences
 
 ## Database
 
@@ -80,15 +99,49 @@ Path:
 Files:
 - `AppDatabase.kt`
   - Room schema, DAOs, aggregate queries, and database builder
-  - Current entities:
+  - current entities:
     - `UserProfile`
     - `AppSettings`
     - `MealLog`
     - `MealItem`
     - `WeightLog`
     - `PresetFood`
-  - Important caveat: currently uses destructive migration fallback
-  - `AppSettings.themePreference` now defaults to `dark` for fresh installs
+  - explicit migrations:
+    - `4 -> 5`
+    - `5 -> 6`
+  - important note:
+    - destructive migration fallback has been removed, but preserved-data migration safety still needs deeper verification
+
+## Feature Support Packages
+
+Path:
+- `app/src/main/java/com/mckl/satiation1/backup/`
+
+Files:
+- `AppBackupSupport.kt`
+  - JSON export/import payload construction and parsing
+  - backup-category selection model
+
+Path:
+- `app/src/main/java/com/mckl/satiation1/history/`
+
+Files:
+- `HistorySupport.kt`
+  - history filter enums/state
+  - pure filtering logic used by the Meal History screen
+
+Path:
+- `app/src/main/java/com/mckl/satiation1/reminders/`
+
+Files:
+- `ReminderSupport.kt`
+  - reminder types and next-trigger calculation
+- `ReminderScheduler.kt`
+  - notification channel creation, AlarmManager scheduling, cancellation, and notification display
+- `ReminderReceiver.kt`
+  - receives fired alarms, shows notifications, and schedules the next reminder
+- `ReminderBootReceiver.kt`
+  - resyncs reminders after boot
 
 ## UI Screens
 
@@ -97,30 +150,24 @@ Path:
 
 Files:
 - `OnboardingScreens.kt`
-  - Splash, staged profile onboarding, and body-metrics onboarding screens
-  - All onboarding screens now apply explicit status-bar and navigation-bar padding for cleaner edge-to-edge spacing
+  - splash, staged profile onboarding, and body-metrics onboarding screens
+  - onboarding screens use edge-to-edge padding and unit-aware weight/height entry
 - `DashboardScreens.kt`
-  - Main container, tab content, manual entry, preset foods, daily targets, progress, settings, profile editing, nutrient editing, API key editing, and appearance UI
-  - Add menu now includes both camera-scan and direct import-photo AI scan entry points
-  - Current Progress screen includes:
-    - progress overview plus separate Calendar and Stats pages
-    - built-in date range picker dialog
-    - simplified range card with `Current Day` plus `Choose Range`
-    - quick-range shortcuts for `Past Week`, `Past Month`, and `All Time`
-    - calorie bar chart
-    - nutritional split donut chart
-    - favorite foods chart
-    - weight trend chart
-    - marker dots and notes
-    - trends/stat summaries
-    - conditional x-axis labels for short vs long ranges
-    - page-entry animation across Progress, Calendar, and Stats
-    - meal edit/delete actions on dashboard meal cards
-  - Phase 3 dashboard scope is complete; remaining future work is outside the core analytics-dashboard milestone
-  - This is still the largest and highest-change file in the app
+  - main container, home, daily targets, progress, profile editing, targets, preset foods, manual entry, and several shared UI helpers
+  - contains the current Progress overview, Calendar, and Stats experience
+  - still the largest and highest-risk UI file
 - `CameraScreens.kt`
-  - Camera preview screen and Gemini nutrition detail screen
-  - Handles live preview, real still capture, manual import, scan review, reanalysis, edit-before-save, and AI persistence actions
+  - camera preview, permission handling, image import, scan review/edit, and AI save flow
+- `SettingsPhase5Screens.kt`
+  - nested `Settings` menu
+  - `Display Units`
+  - `Meal History`
+  - `Advanced`
+- `Phase6Screens.kt`
+  - `Notifications`
+  - onboarding Gemini API key step
+  - onboarding/app guide content
+  - appearance/accent controls and related helpers
 
 ## AI Support
 
@@ -129,11 +176,16 @@ Path:
 
 Files:
 - `GeminiNutritionSupport.kt`
-  - Prompt contract, typed result models, parsing, validation, and UI-state helpers
+  - prompt contract
+  - typed result models
+  - parsing/validation
+  - scan UI-state helpers
 - `GeminiNutritionClient.kt`
-  - Runtime Gemini execution, preferred/fallback model selection, and transient retry handling
+  - runtime Gemini execution
+  - preferred/fallback model selection
+  - transient retry handling
 - `ScanImageLoader.kt`
-  - Shared URI-to-Bitmap decode path for imported images
+  - shared URI/file-to-Bitmap decode path
 
 ## Theme
 
@@ -142,12 +194,13 @@ Path:
 
 Files:
 - `Color.kt`
-  - Theme colors
+  - theme colors
 - `Theme.kt`
   - Compose theme setup
-  - Light-mode primary green was darkened for better contrast
+  - follow-system/manual light-dark selection
+  - primary/secondary accent color parsing
 - `Type.kt`
-  - Typography setup
+  - typography setup
 
 ## Resources
 
@@ -157,7 +210,9 @@ Path:
 Important areas:
 - `values/`
 - `xml/`
-- `mipmap*/`, `drawable/`
+  - backup/data extraction rules are intentional app rules now, not placeholders
+- `mipmap*/`
+- `drawable/`
 
 ## Tests
 
@@ -165,38 +220,60 @@ Paths:
 - `app/src/test/java/com/mckl/satiation1/`
 - `app/src/androidTest/java/com/mckl/satiation1/`
 
-Files:
+Local/unit tests:
+- `DisplayPreferencesTest.kt`
+  - unit conversion and date-format helpers
+- `HistorySupportTest.kt`
+  - search/filter behavior for history
+- `ReminderSupportTest.kt`
+  - next-trigger reminder scheduling logic
 - `ExampleUnitTest.kt`
-- `ExampleInstrumentedTest.kt`
-- `GeminiNutritionSupportInstrumentedTest.kt`
-- `AiMealPersistenceInstrumentedTest.kt`
-- `ScanImageLoaderInstrumentedTest.kt`
-- `GeminiLiveScanInstrumentedTest.kt`
+  - template test still present
 
-Current state:
-- Template tests still exist, but there is now meaningful instrumentation coverage for:
-  - Gemini parsing and validation
-  - imported-image decoding
-  - AI meal persistence
-  - live Gemini scan execution with runtime API key and image inputs
+Instrumentation tests:
+- `GeminiNutritionSupportInstrumentedTest.kt`
+  - parser/validation behavior
+- `AiMealPersistenceInstrumentedTest.kt`
+  - AI meal persistence into Room and captured-image cleanup
+- `ScanImageLoaderInstrumentedTest.kt`
+  - imported-image decoding behavior
+- `GeminiLiveScanInstrumentedTest.kt`
+  - live Gemini verification with runtime args
+- `ExampleInstrumentedTest.kt`
+  - template test still present
 
 ## Where To Look By Task
 
-- Build or dependency issues:
+- Build, dependency, or schema-export issues:
   - `app/build.gradle.kts`
   - `build.gradle.kts`
   - `settings.gradle.kts`
   - `gradle/libs.versions.toml`
+  - `app/schemas/...`
 - Navigation or route issues:
   - `navigation/AppNavigation.kt`
   - `ui/screens/DashboardScreens.kt`
+  - `ui/screens/SettingsPhase5Screens.kt`
+  - `ui/screens/Phase6Screens.kt`
 - Shared state or persistence issues:
   - `navigation/SatiationViewModel.kt`
   - `database/AppDatabase.kt`
+  - `backup/AppBackupSupport.kt`
+- History/search issues:
+  - `history/HistorySupport.kt`
+  - `ui/screens/SettingsPhase5Screens.kt`
+- Reminder/notification issues:
+  - `reminders/ReminderSupport.kt`
+  - `reminders/ReminderScheduler.kt`
+  - `reminders/ReminderReceiver.kt`
+  - `reminders/ReminderBootReceiver.kt`
+  - `ui/screens/Phase6Screens.kt`
 - Onboarding changes:
   - `ui/screens/OnboardingScreens.kt`
-- Manual logging, preset foods, daily targets, progress, settings, or profile changes:
+  - `ui/screens/Phase6Screens.kt`
+- Manual logging, preset foods, targets, progress, settings, or profile changes:
   - `ui/screens/DashboardScreens.kt`
+  - `ui/screens/SettingsPhase5Screens.kt`
   - `navigation/SatiationViewModel.kt`
 - Camera or Gemini changes:
   - `ui/screens/CameraScreens.kt`
@@ -208,18 +285,20 @@ Current state:
 - Project direction and user decisions:
   - `.harness/AGENTS.md`
   - `.harness/PLAN.md`
+  - `.harness/Phase 567/PHASE567TASKLIST.md`
 
 ## Current High-Risk Files
 
 - `app/src/main/java/com/mckl/satiation1/ui/screens/DashboardScreens.kt`
-  - Largest UI file
-  - Contains main tabs, manual logging, settings, preset foods, and most custom analytics UI
+  - largest UI file
+  - contains main tabs, manual entry, progress, profile, and many reusable cards/helpers
 - `app/src/main/java/com/mckl/satiation1/ui/screens/CameraScreens.kt`
-  - Large orchestration file for capture/import/analyze/review/save
-- `app/src/main/java/com/mckl/satiation1/database/AppDatabase.kt`
-  - Central schema/DAO file
-  - Destructive migration is still enabled
+  - orchestrates permission, capture/import, analyze, review, and save
 - `app/src/main/java/com/mckl/satiation1/navigation/SatiationViewModel.kt`
-  - Shared application logic and Room integration
-- `app/src/main/java/com/mckl/satiation1/ai/GeminiNutritionSupport.kt`
-  - Parser strictness and prompt contract directly affect live AI reliability
+  - shared logic for Room, AI persistence, backup actions, and annotation state
+- `app/src/main/java/com/mckl/satiation1/database/AppDatabase.kt`
+  - central schema/DAO file and migration definitions
+- `app/src/main/java/com/mckl/satiation1/ui/screens/SettingsPhase5Screens.kt`
+  - history and advanced settings behavior
+- `app/src/main/java/com/mckl/satiation1/ui/screens/Phase6Screens.kt`
+  - reminders, onboarding guide/API key, and appearance-accent flows

@@ -1,0 +1,24 @@
+package com.mckl.satiation1.reminders
+
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import com.mckl.satiation1.database.SatiationDatabase
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+class ReminderBootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        val pendingResult = goAsync()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val settings = SatiationDatabase.getDatabase(context).appSettingsDao().getSettingsOnce()
+                ReminderScheduler.syncAllReminders(context, settings)
+            } finally {
+                pendingResult.finish()
+            }
+        }
+    }
+}

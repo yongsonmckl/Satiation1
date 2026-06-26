@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -59,7 +60,17 @@ import androidx.navigation.NavController
 import com.mckl.satiation1.GENDERS_LIST
 import com.mckl.satiation1.SatiationGreen
 import com.mckl.satiation1.SatiationOrange
+import com.mckl.satiation1.DisplayPreferences
+import com.mckl.satiation1.displayHeightToCm
+import com.mckl.satiation1.displayWeightToKg
+import com.mckl.satiation1.formatWholeHeightForDisplay
+import com.mckl.satiation1.formatWholeWeightForDisplay
+import com.mckl.satiation1.heightCmToDisplayValue
+import com.mckl.satiation1.heightInputLabel
 import com.mckl.satiation1.navigation.SatiationViewModel
+import com.mckl.satiation1.usesImperialUnits
+import com.mckl.satiation1.weightInputLabel
+import com.mckl.satiation1.weightKgToDisplayValue
 
 @Composable
 fun SplashScreen(navController: NavController) {
@@ -315,20 +326,35 @@ fun NameScreen(navController: NavController, viewModel: SatiationViewModel) {
 
 @Composable
 fun WeightScreen(navController: NavController, viewModel: SatiationViewModel) {
+    val appSettings by viewModel.appSettings.collectAsState()
+    val preferredUnits = appSettings?.preferredUnits ?: DisplayPreferences.preferredUnits
     var weight by remember {
         mutableFloatStateOf(
-            viewModel.setupWeightKg.takeIf { it > 0.0 }?.toFloat() ?: 67f
+            weightKgToDisplayValue(viewModel.setupWeightKg.takeIf { it > 0.0 } ?: 67.0, preferredUnits).toFloat()
         )
     }
     var height by remember {
         mutableFloatStateOf(
-            viewModel.setupHeightCm.takeIf { it > 0.0 }?.toFloat() ?: 170f
+            heightCmToDisplayValue(viewModel.setupHeightCm.takeIf { it > 0.0 } ?: 170.0, preferredUnits).toFloat()
         )
     }
     var editingMetric by remember { mutableStateOf<String?>(null) }
     val scrollState = rememberScrollState()
-    val weightRange = minOf(40f, weight)..maxOf(150f, weight)
-    val heightRange = minOf(120f, height)..maxOf(220f, height)
+    val weightRange = if (usesImperialUnits(preferredUnits)) {
+        minOf(88f, weight)..maxOf(330f, weight)
+    } else {
+        minOf(40f, weight)..maxOf(150f, weight)
+    }
+    val heightRange = if (usesImperialUnits(preferredUnits)) {
+        minOf(47f, height)..maxOf(87f, height)
+    } else {
+        minOf(120f, height)..maxOf(220f, height)
+    }
+
+    LaunchedEffect(preferredUnits) {
+        weight = weightKgToDisplayValue(viewModel.setupWeightKg.takeIf { it > 0.0 } ?: 67.0, preferredUnits).toFloat()
+        height = heightCmToDisplayValue(viewModel.setupHeightCm.takeIf { it > 0.0 } ?: 170.0, preferredUnits).toFloat()
+    }
 
     Column(
         modifier = Modifier
@@ -352,7 +378,7 @@ fun WeightScreen(navController: NavController, viewModel: SatiationViewModel) {
         Text("Current Weight", fontSize = 18.sp, color = Color.White)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            formatOnboardingWeightKg(weight.toInt()),
+            formatWholeWeightForDisplay(weight.toInt(), preferredUnits),
             fontSize = 48.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
@@ -378,7 +404,7 @@ fun WeightScreen(navController: NavController, viewModel: SatiationViewModel) {
         Text("Height", fontSize = 18.sp, color = Color.White)
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            formatOnboardingHeightCm(height.toInt()),
+            formatWholeHeightForDisplay(height.toInt(), preferredUnits),
             fontSize = 48.sp,
             fontWeight = FontWeight.Bold,
             color = Color.White,
@@ -402,34 +428,25 @@ fun WeightScreen(navController: NavController, viewModel: SatiationViewModel) {
         Spacer(modifier = Modifier.height(32.dp))
         Button(
             onClick = {
-                viewModel.setupWeightKg = weight.toDouble()
-                viewModel.setupHeightCm = height.toDouble()
-                viewModel.saveProfile(
-                    name = viewModel.setupName,
-                    startWeightKg = viewModel.setupWeightKg,
-                    currentWeightKg = viewModel.setupWeightKg,
-                    pronouns = viewModel.setupPronouns,
-                    heightCm = viewModel.setupHeightCm
-                )
-                navController.navigate("main") {
-                    popUpTo("splash") { inclusive = true }
-                }
+                viewModel.setupWeightKg = displayWeightToKg(weight.toDouble(), preferredUnits)
+                viewModel.setupHeightCm = displayHeightToCm(height.toDouble(), preferredUnits)
+                navController.navigate("onboarding_api_key")
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color.White),
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
         ) {
-            Text("Complete Setup", color = SatiationGreen)
+            Text("Continue", color = SatiationGreen)
         }
     }
 
     if (editingMetric == "weight") {
         IntegerValueDialog(
             title = "Enter Weight",
-            label = "Weight (kg)",
+            label = weightInputLabel(preferredUnits),
             initialValue = weight.toInt(),
-            validRange = 20..400,
+            validRange = if (usesImperialUnits(preferredUnits)) 44..880 else 20..400,
             onDismiss = { editingMetric = null },
             onConfirm = {
                 weight = it.toFloat()
@@ -441,9 +458,9 @@ fun WeightScreen(navController: NavController, viewModel: SatiationViewModel) {
     if (editingMetric == "height") {
         IntegerValueDialog(
             title = "Enter Height",
-            label = "Height (cm)",
+            label = heightInputLabel(preferredUnits),
             initialValue = height.toInt(),
-            validRange = 80..280,
+            validRange = if (usesImperialUnits(preferredUnits)) 31..110 else 80..280,
             onDismiss = { editingMetric = null },
             onConfirm = {
                 height = it.toFloat()
@@ -495,7 +512,3 @@ private fun IntegerValueDialog(
         }
     )
 }
-
-private fun formatOnboardingWeightKg(weightKg: Int): String = "$weightKg kg"
-
-private fun formatOnboardingHeightCm(heightCm: Int): String = "$heightCm cm"

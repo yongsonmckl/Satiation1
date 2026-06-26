@@ -41,10 +41,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -76,6 +78,7 @@ import com.mckl.satiation1.ai.GeminiNutritionDraft
 import com.mckl.satiation1.ai.GeminiNutritionDraftItem
 import com.mckl.satiation1.ai.GeminiNutritionDraftValidationResult
 import com.mckl.satiation1.ai.GeminiNutritionItem
+import com.mckl.satiation1.ai.GeminiNutritionResult
 import com.mckl.satiation1.ai.GeminiNutritionSupport
 import com.mckl.satiation1.ai.NutritionScanUiState
 import com.mckl.satiation1.ai.ScanImageLoader
@@ -354,6 +357,8 @@ fun NutritionDetailScreen(
     var debugRawResponse by remember { mutableStateOf<String?>(null) }
     var analysisUsedModel by rememberSaveable { mutableStateOf<String?>(null) }
     var analysisUsedHint by rememberSaveable { mutableStateOf<String?>(null) }
+    var showPresetSavePrompt by remember { mutableStateOf(false) }
+    var savedResultForPreset by remember { mutableStateOf<GeminiNutritionResult?>(null) }
 
     LaunchedEffect(imageToScan, apiKey) {
         debugRawResponse = null
@@ -410,7 +415,7 @@ fun NutritionDetailScreen(
     }
 
     LaunchedEffect(uiState) {
-        if (uiState is NutritionScanUiState.Saved) {
+        if (uiState is NutritionScanUiState.Saved && !showPresetSavePrompt) {
             viewModel.currentMainTab = "home"
             navController.popBackStack("main", inclusive = false)
         }
@@ -745,7 +750,11 @@ fun NutritionDetailScreen(
                                     uiState = NutritionScanUiState.Saving
                                     viewModel.saveAiMeal(draftResult.result) { saveResult ->
                                         uiState = saveResult.fold(
-                                            onSuccess = { NutritionScanUiState.Saved },
+                                            onSuccess = {
+                                                savedResultForPreset = draftResult.result
+                                                showPresetSavePrompt = true
+                                                NutritionScanUiState.Saved
+                                            },
                                             onFailure = {
                                                 NutritionScanUiState.SaveFailure(
                                                     it.message ?: "Unable to save the AI meal.",
@@ -790,6 +799,52 @@ fun NutritionDetailScreen(
                 }
             }
         }
+    }
+
+    if (showPresetSavePrompt && savedResultForPreset != null) {
+        AlertDialog(
+            onDismissRequest = { showPresetSavePrompt = false },
+            title = { Text("Save As Preset Meal?") },
+            text = { Text("This AI meal has been saved. Do you also want to open the preset editor with these values prefilled?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val result = savedResultForPreset
+                        showPresetSavePrompt = false
+                        if (result != null) {
+                            val primaryName = result.items.firstOrNull()?.name ?: "AI Meal"
+                            val primaryCategory = result.items.firstOrNull()?.category
+                            viewModel.seedPresetDraft(
+                                name = primaryName,
+                                category = primaryCategory,
+                                calories = result.totalCalories,
+                                protein = result.totalProteinGrams,
+                                carbs = result.totalCarbsGrams,
+                                fats = result.totalFatsGrams,
+                                notes = result.notes
+                            )
+                        }
+                        viewModel.currentMainTab = "profile"
+                        navController.navigate("food_types") {
+                            popUpTo("main") { inclusive = false }
+                        }
+                    }
+                ) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showPresetSavePrompt = false
+                        viewModel.currentMainTab = "home"
+                        navController.popBackStack("main", inclusive = false)
+                    }
+                ) {
+                    Text("No")
+                }
+            }
+        )
     }
 }
 

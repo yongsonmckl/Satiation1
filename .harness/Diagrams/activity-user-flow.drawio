@@ -10,14 +10,17 @@
         <mxCell id="splash" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Splash Screen" vertex="1">
           <mxGeometry height="60" width="160" x="205" y="75" as="geometry" />
         </mxCell>
+        <mxCell id="note1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" value="Updated 2026-06-27.&lt;br&gt;Conceptual flow only.&lt;br&gt;See AGENTS/PLAN for current route truth." vertex="1">
+          <mxGeometry height="70" width="300" x="1170" y="60" as="geometry" />
+        </mxCell>
         <mxCell id="decision1" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="Profile exists?" vertex="1">
           <mxGeometry height="80" width="140" x="435" y="65" as="geometry" />
         </mxCell>
         <mxCell id="onboarding1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Onboarding:&lt;br&gt;Name / Gender / Pronouns" vertex="1">
           <mxGeometry height="70" width="220" x="640" y="20" as="geometry" />
         </mxCell>
-        <mxCell id="onboarding2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Onboarding:&lt;br&gt;Weight / Height" vertex="1">
-          <mxGeometry height="70" width="200" x="890" y="20" as="geometry" />
+        <mxCell id="onboarding2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Onboarding:&lt;br&gt;Weight / Height / API Key / Guide" vertex="1">
+          <mxGeometry height="70" width="260" x="890" y="20" as="geometry" />
         </mxCell>
         <mxCell id="main" parent="1" style="rounded=1;whiteSpace=wrap;html=1;strokeWidth=2;" value="Main Container" vertex="1">
           <mxGeometry height="60" width="180" x="900" y="160" as="geometry" />
@@ -31,13 +34,13 @@
         <mxCell id="progress" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Progress Tab" vertex="1">
           <mxGeometry height="60" width="150" x="1080" y="320" as="geometry" />
         </mxCell>
-        <mxCell id="settings" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Settings Tab" vertex="1">
+        <mxCell id="settings" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Settings Tab / Hub" vertex="1">
           <mxGeometry height="60" width="150" x="550" y="320" as="geometry" />
         </mxCell>
         <mxCell id="menu" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Plus Menu" vertex="1">
           <mxGeometry height="60" width="150" x="1250" y="320" as="geometry" />
         </mxCell>
-        <mxCell id="manual" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Preset Foods / Manual Entry" vertex="1">
+        <mxCell id="manual" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Manual Entry / Meal Edit" vertex="1">
           <mxGeometry height="60" width="240" x="1350" y="470" as="geometry" />
         </mxCell>
         <mxCell id="camera" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Camera Screen" vertex="1">
@@ -52,10 +55,10 @@
         <mxCell id="editNutrients" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Edit Nutrients" vertex="1">
           <mxGeometry height="60" width="160" x="470" y="470" as="geometry" />
         </mxCell>
-        <mxCell id="apiKey" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Gemini API Key" vertex="1">
+        <mxCell id="apiKey" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="API Key / History / Notifications / Advanced" vertex="1">
           <mxGeometry height="60" width="150" x="820" y="470" as="geometry" />
         </mxCell>
-        <mxCell id="appearance" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Appearance" vertex="1">
+        <mxCell id="appearance" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Appearance / Accent Colors" vertex="1">
           <mxGeometry height="60" width="150" x="650" y="470" as="geometry" />
         </mxCell>
         <mxCell id="targetsEdit" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="Change Targets" vertex="1">

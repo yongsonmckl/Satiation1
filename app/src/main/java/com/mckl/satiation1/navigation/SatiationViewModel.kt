@@ -9,6 +9,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.mckl.satiation1.backup.AppBackupPayload
+import com.mckl.satiation1.backup.AppBackupSupport
+import com.mckl.satiation1.backup.BackupSelection
 import com.mckl.satiation1.ai.GeminiNutritionResult
 import com.mckl.satiation1.database.AppSettings
 import com.mckl.satiation1.database.FoodFrequencySummary
@@ -42,11 +45,22 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         IMPORT
     }
 
+    data class PresetDraftState(
+        val name: String,
+        val category: String,
+        val calories: String,
+        val protein: String,
+        val carbs: String,
+        val fats: String,
+        val notes: String
+    )
+
     var capturedImage = mutableStateOf<Bitmap?>(null)
     var currentMainTab by mutableStateOf("home")
     var progressTabSelectionNonce by mutableStateOf(0)
     var editingMeal by mutableStateOf<MealWithItems?>(null)
     var pendingCameraLaunchAction by mutableStateOf(CameraLaunchAction.PREVIEW)
+    var pendingPresetDraft by mutableStateOf<PresetDraftState?>(null)
 
     // Temporary memory for onboarding setup.
     var setupName = ""
@@ -156,6 +170,16 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
                 )
             }
         }
+    }
+
+    fun completeOnboardingProfile() {
+        saveProfile(
+            name = setupName,
+            startWeightKg = setupWeightKg,
+            currentWeightKg = setupWeightKg,
+            pronouns = setupPronouns,
+            heightCm = setupHeightCm
+        )
     }
 
     fun saveSettings(settings: AppSettings) {
@@ -278,6 +302,32 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         editingMeal = null
     }
 
+    fun seedPresetDraft(
+        name: String,
+        category: String?,
+        calories: Double,
+        protein: Double,
+        carbs: Double,
+        fats: Double,
+        notes: String?
+    ) {
+        pendingPresetDraft = PresetDraftState(
+            name = name.trim(),
+            category = category.orEmpty(),
+            calories = calories.toInt().toString(),
+            protein = protein.toString().trimEnd('0').trimEnd('.').ifBlank { "0" },
+            carbs = carbs.toString().trimEnd('0').trimEnd('.').ifBlank { "0" },
+            fats = fats.toString().trimEnd('0').trimEnd('.').ifBlank { "0" },
+            notes = notes.orEmpty()
+        )
+    }
+
+    fun consumePresetDraft(): PresetDraftState? {
+        val draft = pendingPresetDraft
+        pendingPresetDraft = null
+        return draft
+    }
+
     fun openProgressRoot() {
         currentMainTab = "progress"
         progressTabSelectionNonce += 1
@@ -285,6 +335,8 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun getMealsForRange(startInclusive: Long, endInclusive: Long) =
         mealDao.getMealsBetween(startInclusive, endInclusive)
+
+    fun getAllMeals() = mealDao.getAllMeals()
 
     fun getDailyMacroTotals(startInclusive: Long, endInclusive: Long) =
         mealDao.getDailyMacroTotals(startInclusive, endInclusive)
@@ -343,6 +395,118 @@ class SatiationViewModel(application: Application) : AndroidViewModel(applicatio
         }
         _chartAnnotations.value = updated
         persistChartAnnotations(updated)
+    }
+
+    fun exportAppData(
+        selection: BackupSelection,
+        onComplete: (Result<String>) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                require(selection.anySelected()) { "Select at least one data category to export." }
+                val payload = AppBackupPayload(
+                    profile = userProfileDao.getUserProfileOnce(),
+                    settings = appSettingsDao.getSettingsOnce(),
+                    meals = mealDao.getAllMealsOnce(),
+                    weights = weightLogDao.getWeightHistoryOnce(),
+                    presetFoods = presetFoodDao.getPresetFoodsOnce(),
+                    annotations = _chartAnnotations.value
+                )
+                AppBackupSupport.buildExportJson(payload, selection)
+            }
+            viewModelScope.launch {
+                onComplete(result)
+            }
+        }
+    }
+
+    fun importAppData(
+        rawJson: String,
+        selection: BackupSelection,
+        onComplete: (Result<Unit>) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                require(selection.anySelected()) { "Select at least one data category to import." }
+                val root = AppBackupSupport.parseImportJson(rawJson).optJSONObject("categories")
+                    ?: error("Backup file is missing category data.")
+                database.withTransaction {
+                    if (selection.profile) {
+                        userProfileDao.deleteAllProfiles()
+                        AppBackupSupport.readProfile(root)?.let { userProfileDao.insertOrUpdateProfile(it) }
+                    }
+                    if (selection.settings) {
+                        val importedSettings = AppBackupSupport.readSettings(root)
+                        appSettingsDao.insertOrUpdateSettings((importedSettings ?: AppSettings()).copy(id = 1))
+                    }
+                    if (selection.meals) {
+                        mealDao.deleteAllMealLogs()
+                        AppBackupSupport.readMeals(root).asReversed().forEach { mealWithItems ->
+                            persistMeal(
+                                mealLog = mealWithItems.meal.copy(mealId = 0),
+                                items = mealWithItems.items.map { it.copy(itemId = 0, mealId = 0) },
+                                replaceExisting = false
+                            )
+                        }
+                    }
+                    if (selection.weights) {
+                        weightLogDao.deleteAllWeightLogs()
+                        AppBackupSupport.readWeights(root).forEach { weightLog ->
+                            weightLogDao.insertWeightLog(weightLog.copy(weightLogId = 0))
+                        }
+                    }
+                    if (selection.presetFoods) {
+                        presetFoodDao.deleteAllPresetFoods()
+                        AppBackupSupport.readPresetFoods(root).forEach { presetFood ->
+                            presetFoodDao.insertOrUpdatePresetFood(presetFood.copy(presetFoodId = 0))
+                        }
+                    }
+                }
+                if (selection.annotations) {
+                    val importedAnnotations = AppBackupSupport.readAnnotations(root)
+                    _chartAnnotations.value = importedAnnotations
+                    persistChartAnnotations(importedAnnotations)
+                }
+            }
+            viewModelScope.launch {
+                onComplete(result)
+            }
+        }
+    }
+
+    fun clearSelectedData(
+        selection: BackupSelection,
+        onComplete: (Result<Unit>) -> Unit
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val result = runCatching {
+                require(selection.anySelected()) { "Select at least one data category to clear." }
+                database.withTransaction {
+                    if (selection.profile) {
+                        userProfileDao.deleteAllProfiles()
+                    }
+                    if (selection.settings) {
+                        appSettingsDao.insertOrUpdateSettings(AppSettings())
+                    }
+                    if (selection.meals) {
+                        mealDao.deleteAllMealLogs()
+                    }
+                    if (selection.weights) {
+                        weightLogDao.deleteAllWeightLogs()
+                    }
+                    if (selection.presetFoods) {
+                        presetFoodDao.deleteAllPresetFoods()
+                    }
+                }
+                if (selection.annotations) {
+                    _chartAnnotations.value = emptyMap()
+                    persistChartAnnotations(emptyMap())
+                }
+            }
+            viewModelScope.launch {
+                onComplete(result)
+            }
+        }
     }
 
     fun deleteChartAnnotation(dayKey: String, index: Int) {

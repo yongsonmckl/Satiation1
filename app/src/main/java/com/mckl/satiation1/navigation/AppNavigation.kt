@@ -23,11 +23,18 @@ import com.mckl.satiation1.ui.screens.EditPronounsScreen
 import com.mckl.satiation1.ui.screens.EditTargetsScreen
 import com.mckl.satiation1.ui.screens.EditWeightScreen
 import com.mckl.satiation1.ui.screens.AppearanceScreen
+import com.mckl.satiation1.ui.screens.AdvancedSettingsScreen
+import com.mckl.satiation1.ui.screens.DisplayUnitsScreen
 import com.mckl.satiation1.ui.screens.FoodTypesScreen
+import com.mckl.satiation1.ui.screens.HistoryScreen
 import com.mckl.satiation1.ui.screens.MainContainer
 import com.mckl.satiation1.ui.screens.ManualEntryPlaceholderScreen
 import com.mckl.satiation1.ui.screens.NameScreen
+import com.mckl.satiation1.ui.screens.NotificationSettingsScreen
 import com.mckl.satiation1.ui.screens.NutritionDetailScreen
+import com.mckl.satiation1.ui.screens.OnboardingApiKeyScreen
+import com.mckl.satiation1.ui.screens.OnboardingGuideScreen
+import com.mckl.satiation1.ui.screens.SettingsMenuScreen
 import com.mckl.satiation1.ui.screens.SplashScreen
 import com.mckl.satiation1.ui.screens.WeightScreen
 import androidx.navigation.compose.NavHost
@@ -65,6 +72,8 @@ fun SatiationApp(sharedViewModel: SatiationViewModel) {
             composable("splash") { SplashScreen(navController) }
             composable("name") { NameScreen(navController, sharedViewModel) }
             composable("weight") { WeightScreen(navController, sharedViewModel) }
+            composable("onboarding_api_key") { OnboardingApiKeyScreen(navController, sharedViewModel) }
+            composable("onboarding_guide") { OnboardingGuideScreen(navController, sharedViewModel) }
 
             // --- MAIN APP ROUTES ---
             composable("main") { MainContainer(navController, sharedViewModel) }
@@ -127,6 +136,11 @@ fun SatiationApp(sharedViewModel: SatiationViewModel) {
             composable("food_types") { FoodTypesScreen(navController, sharedViewModel) }
             composable("appearance") { AppearanceScreen(navController, sharedViewModel) }
             composable("edit_api_key") { EditApiKeyScreen(navController, sharedViewModel) }
+            composable("settings_menu") { SettingsMenuScreen(navController, sharedViewModel) }
+            composable("display_units") { DisplayUnitsScreen(navController, sharedViewModel) }
+            composable("advanced_settings") { AdvancedSettingsScreen(navController, sharedViewModel) }
+            composable("history") { HistoryScreen(navController, sharedViewModel) }
+            composable("notifications") { NotificationSettingsScreen(navController, sharedViewModel) }
         }
     }
 }

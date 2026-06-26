@@ -10,6 +10,9 @@
         <mxCell id="system" value="Satiation App" style="rounded=0;whiteSpace=wrap;html=1;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="220" y="60" width="1180" height="700" as="geometry" />
         </mxCell>
+        <mxCell id="note1" value="Updated 2026-06-27.&lt;br&gt;Conceptual only.&lt;br&gt;See AGENTS/PLAN for source of truth." style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="1110" y="70" width="260" height="70" as="geometry" />
+        </mxCell>
         <mxCell id="uc1" value="Complete onboarding" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="320" y="110" width="180" height="60" as="geometry" />
         </mxCell>
@@ -37,13 +40,13 @@
         <mxCell id="uc9" value="Edit nutrient targets" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="320" y="420" width="180" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="uc10" value="Change appearance" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="uc10" value="Change appearance &amp; accents" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="560" y="420" width="180" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="uc11" value="Store Gemini API key" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="uc11" value="Manage API key, history, reminders, and backup" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="800" y="420" width="180" height="60" as="geometry" />
         </mxCell>
-        <mxCell id="uc12" value="Scan food with camera" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+        <mxCell id="uc12" value="Scan food with camera or import" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="1040" y="420" width="180" height="60" as="geometry" />
         </mxCell>
         <mxCell id="uc13" value="Review AI nutrition result" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">

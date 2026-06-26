@@ -45,6 +45,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -103,11 +104,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -126,10 +127,25 @@ import com.mckl.satiation1.database.MealWithItems
 import com.mckl.satiation1.database.PresetFood
 import com.mckl.satiation1.database.WeightLog
 import com.mckl.satiation1.DarkText
+import com.mckl.satiation1.DATE_FORMAT_DAY_MONTH_YEAR
+import com.mckl.satiation1.DisplayPreferences
 import com.mckl.satiation1.LightText
 import com.mckl.satiation1.SatiationGreen
 import com.mckl.satiation1.SatiationOrange
+import com.mckl.satiation1.UNIT_IMPERIAL
+import com.mckl.satiation1.displayHeightToCm
+import com.mckl.satiation1.displayWeightToKg
+import com.mckl.satiation1.formatDateForPreference
+import com.mckl.satiation1.formatHeightForDisplay
+import com.mckl.satiation1.formatWholeHeightForDisplay
+import com.mckl.satiation1.formatWholeWeightForDisplay
+import com.mckl.satiation1.formatWeightForDisplay
+import com.mckl.satiation1.heightInputLabel
+import com.mckl.satiation1.heightCmToDisplayValue
 import com.mckl.satiation1.navigation.SatiationViewModel
+import com.mckl.satiation1.usesImperialUnits
+import com.mckl.satiation1.weightInputLabel
+import com.mckl.satiation1.weightKgToDisplayValue
 import com.patrykandpatrick.vico.compose.chart.Chart
 import com.patrykandpatrick.vico.compose.chart.line.lineChart
 import com.patrykandpatrick.vico.core.entry.entryModelOf
@@ -200,7 +216,7 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                     .fillMaxWidth()
                     .background(colorScheme.surface)
                     .navigationBarsPadding()
-                    .padding(bottom = 10.dp)
+                    .padding(bottom = 18.dp)
             ) {
                 Row(
                     modifier = Modifier
@@ -209,24 +225,26 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val selectedTabColor = colorScheme.primary
+                    val unselectedTabColor = colorScheme.onSurfaceVariant
                     IconButton(onClick = { viewModel.currentMainTab = "home" }) {
                         Icon(
                             Icons.Default.Home,
                             contentDescription = "Home",
-                            tint = if (currentTab == "home") DarkText else LightText
+                            tint = if (currentTab == "home") selectedTabColor else unselectedTabColor
                         )
                     }
                     IconButton(onClick = { viewModel.currentMainTab = "checkmark" }) {
                         Icon(
                             Icons.Default.CheckCircle,
                             contentDescription = "Tasks",
-                            tint = if (currentTab == "checkmark") DarkText else LightText
+                            tint = if (currentTab == "checkmark") selectedTabColor else unselectedTabColor
                         )
                     }
 
                     Box(
                         modifier = Modifier
-                            .size(56.dp)
+                            .size(64.dp)
                             .clip(CircleShape)
                             .background(appGreen())
                             .clickable {
@@ -247,14 +265,14 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                         Icon(
                             Icons.Default.DateRange,
                             contentDescription = "Progress",
-                            tint = if (currentTab == "progress") DarkText else LightText
+                            tint = if (currentTab == "progress") selectedTabColor else unselectedTabColor
                         )
                     }
                     IconButton(onClick = { viewModel.currentMainTab = "profile" }) {
                         Icon(
                             Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = if (currentTab == "profile") DarkText else LightText
+                            tint = if (currentTab == "profile") selectedTabColor else unselectedTabColor
                         )
                     }
                 }
@@ -332,17 +350,6 @@ fun MainContainer(rootNavController: NavController, viewModel: SatiationViewMode
                             setShowAddMenu(false)
                             delay(240)
                             viewModel.openCameraForPreview()
-                            rootNavController.navigate("camera")
-                        }
-                    }
-                )
-                ListItem(
-                    headlineContent = { Text("Scan Food (Import Photo)") },
-                    modifier = Modifier.clickable {
-                        coroutineScope.launch {
-                            setShowAddMenu(false)
-                            delay(240)
-                            viewModel.openCameraForImport()
                             rootNavController.navigate("camera")
                         }
                     }
@@ -482,6 +489,8 @@ fun SettingsHubScreen(rootNavController: NavController, viewModel: SatiationView
     val userProfile by viewModel.userProfile.collectAsState()
     val currentBmi by viewModel.currentBmi.collectAsState()
     val profile = userProfile
+    val appSettings by viewModel.appSettings.collectAsState()
+    val preferredUnits = appSettings?.preferredUnits ?: DisplayPreferences.preferredUnits
     val colorScheme = MaterialTheme.colorScheme
     val listState = rememberLazyListState()
     var animateCardIn by remember { mutableStateOf(false) }
@@ -538,10 +547,9 @@ fun SettingsHubScreen(rootNavController: NavController, viewModel: SatiationView
                             } else {
                                 ProfileDetailRow("Name:", profile.name)
                                 ProfileDetailRow("Pronouns:", profile.pronouns)
-                                ProfileDetailRow("Starting Weight:", formatWeightKg(profile.startWeightKg))
-                                ProfileDetailRow("Current Weight:", formatWeightKg(profile.currentWeightKg))
+                                ProfileDetailRow("Current Weight:", formatWeightForDisplay(profile.currentWeightKg, preferredUnits))
                                 profile.heightCm?.let { heightCm ->
-                                    ProfileDetailRow("Height:", formatHeightCm(heightCm))
+                                    ProfileDetailRow("Height:", formatHeightForDisplay(heightCm, preferredUnits))
                                 }
                                 currentBmi?.let { bmi ->
                                     ProfileDetailRow("BMI:", "%.1f".format(Locale.US, bmi))
@@ -564,14 +572,6 @@ fun SettingsHubScreen(rootNavController: NavController, viewModel: SatiationView
             }
             item {
                 SettingsListEntry(
-                    title = "Edit Nutrients",
-                    description = "Edit your Daily Targets and Food Types",
-                    containerColor = profileCardColor,
-                    onClick = { rootNavController.navigate("edit_nutrients") }
-                )
-            }
-            item {
-                SettingsListEntry(
                     title = "Gemini API Key",
                     description = "Store or replace the local scan key",
                     containerColor = profileCardColor,
@@ -580,10 +580,10 @@ fun SettingsHubScreen(rootNavController: NavController, viewModel: SatiationView
             }
             item {
                 SettingsListEntry(
-                    title = "Appearance",
-                    description = "Choose system, light, or dark mode",
+                    title = "Settings",
+                    description = "Units, nutrients, appearance, history, reminders, and advanced tools",
                     containerColor = profileCardColor,
-                    onClick = { rootNavController.navigate("appearance") }
+                    onClick = { rootNavController.navigate("settings_menu") }
                 )
             }
         }
@@ -1042,6 +1042,14 @@ fun ProgressScreen(
                             animationKey = pageAnimationKey,
                             staggerIndex = if (hasAnalyticsData) 2 else 3
                         ) {
+                            BmiGaugeCard(currentBmi = currentBmi)
+                        }
+                    }
+                    item {
+                        ProgressAnimatedSection(
+                            animationKey = pageAnimationKey,
+                            staggerIndex = if (hasAnalyticsData) 3 else 4
+                        ) {
                             WeightTrendCard(
                                 weightHistory = rangeWeightHistory,
                                 rangeLabel = formatDateRangeLabel(rangeStartDay, rangeEnd),
@@ -1053,7 +1061,7 @@ fun ProgressScreen(
                     item {
                         ProgressAnimatedSection(
                             animationKey = pageAnimationKey,
-                            staggerIndex = if (hasAnalyticsData) 3 else 4
+                            staggerIndex = if (hasAnalyticsData) 4 else 5
                         ) {
                             FavoriteFoodsCard(topFoods = topFoods)
                         }
@@ -1061,7 +1069,7 @@ fun ProgressScreen(
                     item {
                         ProgressAnimatedSection(
                             animationKey = pageAnimationKey,
-                            staggerIndex = if (hasAnalyticsData) 4 else 5
+                            staggerIndex = if (hasAnalyticsData) 5 else 6
                         ) {
                             WeekdayMealPatternCard(
                                 pattern = weekdayMealPattern,
@@ -1617,6 +1625,7 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
     val presetFoods by viewModel.presetFoods.collectAsState()
     val listState = rememberLazyListState()
     var editingPreset by remember { mutableStateOf<PresetFood?>(null) }
+    var createPresetSeed by remember { mutableStateOf(viewModel.consumePresetDraft()) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -1633,7 +1642,7 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
             }
             item {
                 Text(
-                    "Saved foods from here can be reused inside Preset Foods / Manual Entry.",
+                    "Create reusable preset foods here or prefill one from a saved meal.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -1641,15 +1650,18 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
                 PresetFoodEditorCard(
                     title = if (editingPreset == null) "Create Preset Food" else "Edit Preset Food",
                     submitLabel = if (editingPreset == null) "Save Preset" else "Update Preset",
-                    initialName = editingPreset?.name.orEmpty(),
-                    initialCategory = editingPreset?.category.orEmpty(),
-                    initialCalories = editingPreset?.calories?.let(::formatNumberInput).orEmpty(),
-                    initialProtein = editingPreset?.proteinGrams?.let(::formatNumberInput).orEmpty(),
-                    initialCarbs = editingPreset?.carbsGrams?.let(::formatNumberInput).orEmpty(),
-                    initialFats = editingPreset?.fatsGrams?.let(::formatNumberInput).orEmpty(),
-                    initialNotes = editingPreset?.notes.orEmpty(),
+                    initialName = editingPreset?.name ?: createPresetSeed?.name.orEmpty(),
+                    initialCategory = editingPreset?.category ?: createPresetSeed?.category.orEmpty(),
+                    initialCalories = editingPreset?.calories?.let(::formatNumberInput) ?: createPresetSeed?.calories.orEmpty(),
+                    initialProtein = editingPreset?.proteinGrams?.let(::formatNumberInput) ?: createPresetSeed?.protein.orEmpty(),
+                    initialCarbs = editingPreset?.carbsGrams?.let(::formatNumberInput) ?: createPresetSeed?.carbs.orEmpty(),
+                    initialFats = editingPreset?.fatsGrams?.let(::formatNumberInput) ?: createPresetSeed?.fats.orEmpty(),
+                    initialNotes = editingPreset?.notes ?: createPresetSeed?.notes.orEmpty(),
                     secondaryActionLabel = if (editingPreset == null) null else "Cancel Edit",
-                    onSecondaryAction = { editingPreset = null },
+                    onSecondaryAction = {
+                        editingPreset = null
+                        createPresetSeed = null
+                    },
                     onSubmit = { name, category, calories, protein, carbs, fats, notes ->
                         viewModel.savePresetFood(
                             presetFoodId = editingPreset?.presetFoodId ?: 0,
@@ -1662,6 +1674,7 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
                             notes = notes
                         )
                         editingPreset = null
+                        createPresetSeed = null
                     }
                 )
             }
@@ -1685,36 +1698,6 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
                     )
                 }
             }
-            if (editingPreset != null) {
-                item {
-                    PresetFoodEditorCard(
-                        title = "Edit Preset Food",
-                        submitLabel = "Update Preset",
-                        initialName = editingPreset?.name.orEmpty(),
-                        initialCategory = editingPreset?.category.orEmpty(),
-                        initialCalories = editingPreset?.calories?.let(::formatNumberInput).orEmpty(),
-                        initialProtein = editingPreset?.proteinGrams?.let(::formatNumberInput).orEmpty(),
-                        initialCarbs = editingPreset?.carbsGrams?.let(::formatNumberInput).orEmpty(),
-                        initialFats = editingPreset?.fatsGrams?.let(::formatNumberInput).orEmpty(),
-                        initialNotes = editingPreset?.notes.orEmpty(),
-                        secondaryActionLabel = "Cancel Edit",
-                        onSecondaryAction = { editingPreset = null },
-                        onSubmit = { name, savedCategory, savedCalories, savedProtein, savedCarbs, savedFats, savedNotes ->
-                            viewModel.savePresetFood(
-                                presetFoodId = editingPreset?.presetFoodId ?: 0,
-                                name = name,
-                                category = savedCategory,
-                                calories = savedCalories,
-                                proteinGrams = savedProtein,
-                                carbsGrams = savedCarbs,
-                                fatsGrams = savedFats,
-                                notes = savedNotes
-                            )
-                            editingPreset = null
-                        }
-                    )
-                }
-            }
         }
         PassiveScrollbar(listState = listState)
     }
@@ -1723,31 +1706,133 @@ fun FoodTypesScreen(navController: NavController, viewModel: SatiationViewModel)
 @Composable
 fun AppearanceScreen(navController: NavController, viewModel: SatiationViewModel) {
     val appSettings by viewModel.appSettings.collectAsState()
-    val currentPreference = appSettings?.themePreference ?: "dark"
+    val currentSettings = appSettings ?: AppSettings()
     val panelColor = settingsPanelColor()
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp).statusBarsPadding(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+            .statusBarsPadding()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         ScreenHeader(title = "Appearance", onBack = { navController.popBackStack() })
-        SettingsListEntry(
-            title = "Light Mode",
-            description = if (currentPreference == "light") "Selected" else "Always use the light theme",
-            containerColor = panelColor,
-            onClick = {
-                val currentSettings = appSettings ?: AppSettings()
-                viewModel.saveSettings(currentSettings.copy(themePreference = "light"))
-            }
+        AppearanceAccentControls(
+            currentSettings = currentSettings,
+            onUpdate = viewModel::saveSettings
         )
-        SettingsListEntry(
-            title = "Dark Mode",
-            description = if (currentPreference == "dark") "Selected" else "Always use the dark theme",
-            containerColor = panelColor,
-            onClick = {
-                val currentSettings = appSettings ?: AppSettings()
-                viewModel.saveSettings(currentSettings.copy(themePreference = "dark"))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = panelColor)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Use System Theme", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                        Text(
+                            "When enabled, the app follows the phone theme and manual light/dark switching is locked.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 13.sp
+                        )
+                    }
+                    androidx.compose.material3.Switch(
+                        checked = currentSettings.followSystemTheme,
+                        onCheckedChange = { checked ->
+                            viewModel.saveSettings(currentSettings.copy(followSystemTheme = checked))
+                        }
+                    )
+                }
             }
+        }
+        AnimatedVisibility(
+            visible = !currentSettings.followSystemTheme,
+            enter = androidx.compose.animation.slideInVertically(initialOffsetY = { -it / 3 }) + fadeIn(),
+            exit = androidx.compose.animation.slideOutVertically(targetOffsetY = { -it / 3 }) + fadeOut()
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = panelColor)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Theme Mode", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        "Choose the app theme manually once system theme is turned off.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 13.sp
+                    )
+                    ThemeModeToggle(
+                        isDarkMode = currentSettings.themePreference != "light",
+                        onToggle = { useDark ->
+                            viewModel.saveSettings(
+                                currentSettings.copy(themePreference = if (useDark) "dark" else "light")
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeModeToggle(
+    isDarkMode: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(colorScheme.surfaceVariant)
+            .padding(4.dp)
+    ) {
+        ThemeModeToggleOption(
+            label = "Light",
+            selected = !isDarkMode,
+            onClick = { onToggle(false) },
+            modifier = Modifier.weight(1f)
+        )
+        ThemeModeToggleOption(
+            label = "Dark",
+            selected = isDarkMode,
+            onClick = { onToggle(true) },
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun ThemeModeToggleOption(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) colorScheme.primary else Color.Transparent)
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            fontWeight = FontWeight.Bold,
+            color = if (selected) colorScheme.onPrimary else colorScheme.onSurfaceVariant
         )
     }
 }
@@ -1807,17 +1892,23 @@ fun EditPronounsScreen(navController: NavController, viewModel: SatiationViewMod
 @Composable
 fun EditHeightScreen(navController: NavController, viewModel: SatiationViewModel) {
     val userProfile by viewModel.userProfile.collectAsState()
-    var height by remember { mutableFloatStateOf(userProfile?.heightCm?.toFloat() ?: 170.0f) }
+    val appSettings by viewModel.appSettings.collectAsState()
+    val preferredUnits = appSettings?.preferredUnits ?: DisplayPreferences.preferredUnits
+    var height by remember { mutableFloatStateOf(heightCmToDisplayValue(userProfile?.heightCm ?: 170.0, preferredUnits).toFloat()) }
     var isDialogOpen by remember { mutableStateOf(false) }
-    val heightRange = minOf(120f, height)..maxOf(220f, height)
+    val heightRange = if (usesImperialUnits(preferredUnits)) {
+        minOf(47f, height)..maxOf(87f, height)
+    } else {
+        minOf(120f, height)..maxOf(220f, height)
+    }
 
-    LaunchedEffect(userProfile?.heightCm) {
-        height = userProfile?.heightCm?.toFloat() ?: 170.0f
+    LaunchedEffect(userProfile?.heightCm, preferredUnits) {
+        height = heightCmToDisplayValue(userProfile?.heightCm ?: 170.0, preferredUnits).toFloat()
     }
 
     MetricSliderScreen(
         title = "Change Height",
-        valueText = formatWholeHeightCm(height.toInt()),
+        valueText = formatWholeHeightForDisplay(height.toInt(), preferredUnits),
         backgroundColor = SatiationGreen,
         onBack = { navController.popBackStack() },
         onSaveLabel = "Save Height",
@@ -1837,7 +1928,7 @@ fun EditHeightScreen(navController: NavController, viewModel: SatiationViewModel
                     startWeightKg = profile.startWeightKg,
                     currentWeightKg = profile.currentWeightKg,
                     pronouns = profile.pronouns,
-                    heightCm = height.toDouble()
+                    heightCm = displayHeightToCm(height.toDouble(), preferredUnits)
                 )
                 navController.popBackStack()
             }
@@ -1847,9 +1938,9 @@ fun EditHeightScreen(navController: NavController, viewModel: SatiationViewModel
     if (isDialogOpen) {
         IntegerValueDialog(
             title = "Enter Height",
-            label = "Height (cm)",
+            label = heightInputLabel(preferredUnits),
             initialValue = height.toInt(),
-            validRange = 80..280,
+            validRange = if (usesImperialUnits(preferredUnits)) 31..110 else 80..280,
             onDismiss = { isDialogOpen = false },
             onConfirm = {
                 height = it.toFloat()
@@ -1862,17 +1953,23 @@ fun EditHeightScreen(navController: NavController, viewModel: SatiationViewModel
 @Composable
 fun EditWeightScreen(navController: NavController, viewModel: SatiationViewModel) {
     val userProfile by viewModel.userProfile.collectAsState()
-    var weight by remember { mutableFloatStateOf(userProfile?.currentWeightKg?.toFloat() ?: 67.0f) }
+    val appSettings by viewModel.appSettings.collectAsState()
+    val preferredUnits = appSettings?.preferredUnits ?: DisplayPreferences.preferredUnits
+    var weight by remember { mutableFloatStateOf(weightKgToDisplayValue(userProfile?.currentWeightKg ?: 67.0, preferredUnits).toFloat()) }
     var isDialogOpen by remember { mutableStateOf(false) }
-    val weightRange = minOf(40f, weight)..maxOf(150f, weight)
+    val weightRange = if (usesImperialUnits(preferredUnits)) {
+        minOf(88f, weight)..maxOf(330f, weight)
+    } else {
+        minOf(40f, weight)..maxOf(150f, weight)
+    }
 
-    LaunchedEffect(userProfile?.currentWeightKg) {
-        weight = userProfile?.currentWeightKg?.toFloat() ?: 67.0f
+    LaunchedEffect(userProfile?.currentWeightKg, preferredUnits) {
+        weight = weightKgToDisplayValue(userProfile?.currentWeightKg ?: 67.0, preferredUnits).toFloat()
     }
 
     MetricSliderScreen(
         title = "Change Weight",
-        valueText = formatWholeWeightKg(weight.toInt()),
+        valueText = formatWholeWeightForDisplay(weight.toInt(), preferredUnits),
         backgroundColor = SatiationOrange,
         onBack = { navController.popBackStack() },
         onSaveLabel = "Save Weight",
@@ -1886,7 +1983,7 @@ fun EditWeightScreen(navController: NavController, viewModel: SatiationViewModel
             )
         },
         onSave = {
-            viewModel.logWeight(weight.toDouble())
+            viewModel.logWeight(displayWeightToKg(weight.toDouble(), preferredUnits))
             navController.popBackStack()
         }
     )
@@ -1894,9 +1991,9 @@ fun EditWeightScreen(navController: NavController, viewModel: SatiationViewModel
     if (isDialogOpen) {
         IntegerValueDialog(
             title = "Enter Weight",
-            label = "Weight (kg)",
+            label = weightInputLabel(preferredUnits),
             initialValue = weight.toInt(),
-            validRange = 20..400,
+            validRange = if (usesImperialUnits(preferredUnits)) 44..880 else 20..400,
             onDismiss = { isDialogOpen = false },
             onConfirm = {
                 weight = it.toFloat()
@@ -1924,7 +2021,6 @@ fun EditApiKeyScreen(navController: NavController, viewModel: SatiationViewModel
             value = apiKeyDraft,
             onValueChange = { apiKeyDraft = it },
             label = { Text("API Key") },
-            visualTransformation = PasswordVisualTransformation(),
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(24.dp))
@@ -1993,7 +2089,7 @@ private fun MetricSliderScreen(
 }
 
 @Composable
-private fun ScreenHeader(
+fun ScreenHeader(
     title: String,
     onBack: () -> Unit,
     lightContent: Boolean = false
@@ -2057,7 +2153,7 @@ private fun IntegerValueDialog(
 }
 
 @Composable
-private fun ProfileDetailRow(label: String, value: String) {
+fun ProfileDetailRow(label: String, value: String) {
     val colorScheme = MaterialTheme.colorScheme
     Text(
         buildAnnotatedString {
@@ -2080,7 +2176,7 @@ private fun ProfileDetailRow(label: String, value: String) {
 }
 
 @Composable
-private fun SettingsListEntry(
+fun SettingsListEntry(
     title: String,
     description: String,
     containerColor: Color,
@@ -2117,7 +2213,7 @@ private fun SettingsListEntry(
 }
 
 @Composable
-private fun SettingsOptionRow(
+fun SettingsOptionRow(
     title: String,
     selected: Boolean,
     onClick: () -> Unit
@@ -2151,10 +2247,8 @@ private fun SettingsOptionRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: SatiationViewModel) {
-    val presetFoods by viewModel.presetFoods.collectAsState()
     val editingMeal = viewModel.editingMeal
     val colorScheme = MaterialTheme.colorScheme
-    var editingPreset by remember { mutableStateOf<PresetFood?>(null) }
     var mealName by remember { mutableStateOf("") }
     var category by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
@@ -2166,12 +2260,12 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
     var useCurrentDate by rememberSaveable(editingMeal?.meal?.mealId) { mutableStateOf(true) }
     var selectedLogDay by rememberSaveable(editingMeal?.meal?.mealId) { mutableLongStateOf(todayStart) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showPresetSavePrompt by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(editingMeal?.meal?.mealId) {
         val mealToEdit = editingMeal
         if (mealToEdit == null) {
-            editingPreset = null
             mealName = ""
             category = ""
             notes = ""
@@ -2226,7 +2320,7 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = colorScheme.onBackground)
                     }
                     Text(
-                        if (editingMeal == null) "Preset Foods / Manual Entry" else "Edit Meal",
+                        if (editingMeal == null) "Manual Entry" else "Edit Meal",
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold,
                         color = colorScheme.onBackground
@@ -2365,8 +2459,7 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
                                 fatsGrams = parsedFats
                             )
                             viewModel.saveMeal(mealLog, listOf(item))
-                            viewModel.clearMealDraft()
-                            navController.popBackStack()
+                            showPresetSavePrompt = true
                         }
                     },
                     modifier = Modifier.fillMaxWidth().height(56.dp)
@@ -2374,35 +2467,28 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
                     Text(if (editingMeal == null) "Save Meal" else "Update Meal")
                 }
             }
-            item {
-                Text("Preset Foods", fontWeight = FontWeight.Bold, color = colorScheme.onBackground)
-            }
-            if (presetFoods.isEmpty()) {
+            if (editingMeal != null) {
                 item {
-                    EmptyStateCard("No preset foods saved yet.")
-                }
-            } else {
-                items(presetFoods) { preset ->
-                    PresetFoodCard(
-                        preset = preset,
-                        onUse = {
-                            editingPreset = null
-                            mealName = preset.name
-                            category = preset.category.orEmpty()
-                            notes = preset.notes.orEmpty()
-                            calories = preset.calories.toInt().toString()
-                            protein = preset.proteinGrams.toInt().toString()
-                            carbs = preset.carbsGrams.toInt().toString()
-                            fats = preset.fatsGrams.toInt().toString()
-                        },
-                        onEdit = { editingPreset = preset },
-                        onDelete = {
-                            viewModel.deletePresetFood(preset.presetFoodId)
-                            if (editingPreset?.presetFoodId == preset.presetFoodId) {
-                                editingPreset = null
+                    OutlinedButton(
+                        onClick = {
+                            val trimmedMealName = mealName.trim()
+                            if (trimmedMealName.isNotBlank()) {
+                                viewModel.seedPresetDraft(
+                                    name = trimmedMealName,
+                                    category = category.trim().ifEmpty { null },
+                                    calories = calories.toDoubleOrNull() ?: 0.0,
+                                    protein = protein.toDoubleOrNull() ?: 0.0,
+                                    carbs = carbs.toDoubleOrNull() ?: 0.0,
+                                    fats = fats.toDoubleOrNull() ?: 0.0,
+                                    notes = notes.trim().ifEmpty { null }
+                                )
+                                navController.navigate("food_types")
                             }
-                        }
-                    )
+                        },
+                        modifier = Modifier.fillMaxWidth().height(56.dp)
+                    ) {
+                        Text("Save As Preset Meal")
+                    }
                 }
             }
         }
@@ -2431,6 +2517,48 @@ fun ManualEntryPlaceholderScreen(navController: NavController, viewModel: Satiat
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+
+    if (showPresetSavePrompt) {
+        AlertDialog(
+            onDismissRequest = { showPresetSavePrompt = false },
+            title = { Text("Save As Preset Meal?") },
+            text = { Text("This meal has been saved. Do you also want to open the preset editor with this meal prefilled?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val trimmedMealName = mealName.trim()
+                        showPresetSavePrompt = false
+                        if (trimmedMealName.isNotBlank()) {
+                            viewModel.seedPresetDraft(
+                                name = trimmedMealName,
+                                category = category.trim().ifEmpty { null },
+                                calories = calories.toDoubleOrNull() ?: 0.0,
+                                protein = protein.toDoubleOrNull() ?: 0.0,
+                                carbs = carbs.toDoubleOrNull() ?: 0.0,
+                                fats = fats.toDoubleOrNull() ?: 0.0,
+                                notes = notes.trim().ifEmpty { null }
+                            )
+                        }
+                        viewModel.clearMealDraft()
+                        navController.navigate("food_types")
+                    }
+                ) {
+                    Text("Yes")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showPresetSavePrompt = false
+                        viewModel.clearMealDraft()
+                        navController.popBackStack()
+                    }
+                ) {
+                    Text("No")
+                }
+            }
+        )
     }
 }
 
@@ -2676,6 +2804,12 @@ private fun ProgressCalendarBrowserCard(
     showAllTime: Boolean
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    val quickLabelSize = when {
+        screenWidth < 360 -> 9.sp
+        screenWidth < 400 -> 10.sp
+        else -> 11.sp
+    }
     val todayStart = remember { startOfDayMillis(System.currentTimeMillis()) }
     val quickRangeSelection = remember(rangeStartDay, rangeEndDay, showAllTime, todayStart) {
         when {
@@ -2722,7 +2856,7 @@ private fun ProgressCalendarBrowserCard(
                 Box(modifier = Modifier.weight(1f)) {
                     ProgressRangeButton(
                         label = "Past Week",
-                        labelFontSize = 11.sp,
+                        labelFontSize = quickLabelSize,
                         isSelected = quickRangeSelection == "week",
                         onClick = { onQuickRangeSelected("week") }
                     )
@@ -2730,7 +2864,7 @@ private fun ProgressCalendarBrowserCard(
                 Box(modifier = Modifier.weight(1f)) {
                     ProgressRangeButton(
                         label = "Past Month",
-                        labelFontSize = 11.sp,
+                        labelFontSize = quickLabelSize,
                         isSelected = quickRangeSelection == "month",
                         onClick = { onQuickRangeSelected("month") }
                     )
@@ -2738,7 +2872,7 @@ private fun ProgressCalendarBrowserCard(
                 Box(modifier = Modifier.weight(1f)) {
                     ProgressRangeButton(
                         label = if (showAllTime) "All Time" else "Past Year",
-                        labelFontSize = 11.sp,
+                        labelFontSize = quickLabelSize,
                         isSelected = quickRangeSelection == if (showAllTime) "all_time" else "year",
                         onClick = { onQuickRangeSelected(if (showAllTime) "all_time" else "year") }
                     )
@@ -2757,11 +2891,11 @@ private fun ProgressRangeButton(
 ) {
     if (isSelected) {
         Button(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-            Text(label, fontSize = labelFontSize)
+            Text(label, fontSize = labelFontSize, maxLines = 1)
         }
     } else {
         OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-            Text(label, fontSize = labelFontSize)
+            Text(label, fontSize = labelFontSize, maxLines = 1)
         }
     }
 }
@@ -2973,6 +3107,7 @@ private fun CalorieRangeChart(
                 val barHeight = ((day.totalCalories / maxCalories).toFloat() * (baselineY - 16.dp.toPx())).coerceAtLeast(0f)
                 val top = baselineY - barHeight
                 val isTooltipSelected = tooltipDayKey == day.dayKey
+                val isDaySelected = selectedDay.dayKey == day.dayKey
                 val barColor = if (day.totalCalories <= 0.0) {
                     colorScheme.secondary.copy(alpha = 0.2f)
                 } else if (isTooltipSelected) {
@@ -2987,6 +3122,17 @@ private fun CalorieRangeChart(
                     size = Size(barWidth, barHeight),
                     cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx(), 10.dp.toPx())
                 )
+
+                if (isDaySelected) {
+                    val indicatorX = left + (barWidth / 2f)
+                    drawLine(
+                        color = colorScheme.onSurface.copy(alpha = 0.85f),
+                        start = Offset(indicatorX, top - 10.dp.toPx()),
+                        end = Offset(indicatorX, baselineY),
+                        strokeWidth = 3.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                }
             }
         }
 
@@ -3069,6 +3215,99 @@ private fun ProgressHighlightsCard(
                 "Highest Calorie Day",
                 highestCalorieDay?.let { "${it.compactLabel} | ${formatCalories(it.totalCalories)}" } ?: "No meal days yet"
             )
+        }
+    }
+}
+
+@Composable
+private fun BmiGaugeCard(currentBmi: Double?) {
+    val colorScheme = MaterialTheme.colorScheme
+    val healthyColor = colorScheme.primary
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = colorScheme.surface)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("BMI Gauge", fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+            Text(
+                "A quick visual cue for underweight, healthy, overweight, and obesity ranges.",
+                color = colorScheme.onSurfaceVariant,
+                fontSize = 13.sp
+            )
+            if (currentBmi == null) {
+                SparseTrendState(
+                    title = "BMI unavailable",
+                    message = "Add height and current weight in your profile to calculate BMI."
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp)
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val startAngle = 180f
+                        val sweep = 180f
+                        val strokeWidth = 22.dp.toPx()
+                        val diameter = size.minDimension * 0.9f
+                        val topLeft = Offset((size.width - diameter) / 2f, size.height * 0.1f)
+                        val arcSize = Size(diameter, diameter)
+                        val ranges = listOf(
+                            Triple(0.0, 18.5, Color(0xFFF2C84B)),
+                            Triple(18.5, 25.0, healthyColor),
+                            Triple(25.0, 30.0, Color(0xFFF08A3E)),
+                            Triple(30.0, 40.0, Color(0xFFD65555))
+                        )
+                        ranges.forEach { (from, to, color) ->
+                            val sweepAngle = (((to - from) / 40.0) * sweep).toFloat()
+                            val start = startAngle + (((from) / 40.0) * sweep).toFloat()
+                            drawArc(
+                                color = color,
+                                startAngle = start,
+                                sweepAngle = sweepAngle,
+                                useCenter = false,
+                                topLeft = topLeft,
+                                size = arcSize,
+                                style = Stroke(width = strokeWidth, cap = StrokeCap.Round)
+                            )
+                        }
+                        val normalized = currentBmi.coerceIn(0.0, 40.0) / 40.0
+                        val angle = Math.toRadians((180 + (normalized * 180)).toDouble())
+                        val center = Offset(size.width / 2f, topLeft.y + (diameter / 2f))
+                        val pointerLength = (diameter / 2f) - 18.dp.toPx()
+                        val pointerEnd = Offset(
+                            x = center.x + (kotlin.math.cos(angle) * pointerLength).toFloat(),
+                            y = center.y + (kotlin.math.sin(angle) * pointerLength).toFloat()
+                        )
+                        drawLine(
+                            color = colorScheme.onSurface,
+                            start = center,
+                            end = pointerEnd,
+                            strokeWidth = 4.dp.toPx(),
+                            cap = StrokeCap.Round
+                        )
+                        drawCircle(color = colorScheme.onSurface, radius = 6.dp.toPx(), center = center)
+                    }
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("%.1f".format(Locale.US, currentBmi), fontWeight = FontWeight.Bold, color = colorScheme.onSurface)
+                        Text(
+                            when {
+                                currentBmi < 18.5 -> "Underweight"
+                                currentBmi < 25.0 -> "Healthy"
+                                currentBmi < 30.0 -> "Overweight"
+                                else -> "Obesity"
+                            },
+                            color = colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -4012,7 +4251,7 @@ private fun formatNumberInput(value: Double): String {
 }
 
 @Composable
-private fun EmptyStateCard(message: String) {
+fun EmptyStateCard(message: String) {
     val colorScheme = MaterialTheme.colorScheme
     Box(
         modifier = Modifier
@@ -4032,7 +4271,7 @@ private fun EmptyMealsCard() {
 }
 
 @Composable
-private fun settingsPanelColor(): Color {
+fun settingsPanelColor(): Color {
     val colorScheme = MaterialTheme.colorScheme
     return if (colorScheme.background.luminance() > 0.5f) {
         Color(0xFFFFFCF5)
@@ -4043,57 +4282,12 @@ private fun settingsPanelColor(): Color {
 
 @Composable
 private fun appGreen(): Color {
-    val colorScheme = MaterialTheme.colorScheme
-    return if (colorScheme.background.luminance() > 0.5f) {
-        colorScheme.primary
-    } else {
-        SatiationGreen
-    }
+    return MaterialTheme.colorScheme.primary
 }
 
 @Composable
 private fun PassiveScrollbar(listState: LazyListState) {
-    val layoutInfo = listState.layoutInfo
-    val totalItems = layoutInfo.totalItemsCount
-    if (totalItems <= 0) return
-
-    val visibleItems = layoutInfo.visibleItemsInfo
-    if (visibleItems.isEmpty()) return
-
-    val averageItemHeight = visibleItems.map { it.size }.average().toFloat().coerceAtLeast(1f)
-    val estimatedContentHeight = averageItemHeight * totalItems
-    val viewportHeight = (layoutInfo.viewportEndOffset - layoutInfo.viewportStartOffset).toFloat()
-    if (estimatedContentHeight <= viewportHeight) return
-
-    val firstVisibleItem = visibleItems.first()
-    val scrollOffset = (firstVisibleItem.index * averageItemHeight) - firstVisibleItem.offset
-    val scrollProgress = (scrollOffset / (estimatedContentHeight - viewportHeight)).coerceIn(0f, 1f)
-    val density = LocalDensity.current
-
-    BoxWithConstraints(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 24.dp, bottom = 24.dp, end = 8.dp),
-        contentAlignment = Alignment.TopEnd
-    ) {
-        val trackHeightPx = with(density) { maxHeight.toPx() }
-        val thumbHeightPx = with(density) { minOf(56.dp.toPx(), trackHeightPx) }
-        val thumbOffsetPx = (trackHeightPx - thumbHeightPx) * scrollProgress
-
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f), RoundedCornerShape(999.dp))
-        )
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .height(with(density) { thumbHeightPx.toDp() })
-                .offset(y = with(density) { thumbOffsetPx.toDp() })
-                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f), RoundedCornerShape(999.dp))
-        )
-    }
+    return
 }
 
 @Composable
@@ -4204,31 +4398,21 @@ fun MacroBar(label: String, value: Float, max: Float, color: Color) {
     }
 }
 
-private fun formatWeightKg(weightKg: Double): String {
-    val display = if (weightKg % 1.0 == 0.0) {
-        weightKg.toInt().toString()
-    } else {
-        "%.1f".format(Locale.US, weightKg)
-    }
-    return "$display kg"
+fun formatWeightKg(weightKg: Double): String {
+    return formatWeightForDisplay(weightKg)
 }
 
-private fun formatHeightCm(heightCm: Double): String {
-    val display = if (heightCm % 1.0 == 0.0) {
-        heightCm.toInt().toString()
-    } else {
-        "%.1f".format(Locale.US, heightCm)
-    }
-    return "$display cm"
+fun formatHeightCm(heightCm: Double): String {
+    return formatHeightForDisplay(heightCm)
 }
 
-private fun formatCalories(calories: Double): String {
+fun formatCalories(calories: Double): String {
     return "${calories.toInt()} Kcal"
 }
 
-private fun formatWholeWeightKg(weightKg: Int): String = "$weightKg kg"
+fun formatWholeWeightKg(weightKg: Int): String = formatWholeWeightForDisplay(weightKg)
 
-private fun formatWholeHeightCm(heightCm: Int): String = "$heightCm cm"
+fun formatWholeHeightCm(heightCm: Int): String = formatWholeHeightForDisplay(heightCm)
 
 private val DarkFatsColor = Color(0xFF8A7AB4)
 private val DarkCarbsColor = Color(0xFFB07A00)
@@ -4249,7 +4433,7 @@ private fun formatMacroProgress(value: Float): String {
     }
 }
 
-private fun formatTime(epochMillis: Long): String {
+fun formatTime(epochMillis: Long): String {
     return SimpleDateFormat("h:mm a", Locale.US).format(Date(epochMillis))
 }
 
@@ -4439,8 +4623,8 @@ private fun formatCompactDayLabel(epochMillis: Long): String {
     return SimpleDateFormat("EEE d", Locale.US).format(Date(epochMillis))
 }
 
-private fun formatLongDayLabel(epochMillis: Long): String {
-    return SimpleDateFormat("EEEE, d MMM", Locale.US).format(Date(epochMillis))
+fun formatLongDayLabel(epochMillis: Long): String {
+    return formatDateForPreference(epochMillis, withWeekday = true)
 }
 
 private fun formatWeekdayLabel(epochMillis: Long): String {
@@ -4455,9 +4639,9 @@ private fun formatDayOfMonth(epochMillis: Long): String {
     return SimpleDateFormat("d", Locale.US).format(Date(epochMillis))
 }
 
-private fun formatDateRangeLabel(startMillis: Long, endMillis: Long): String {
-    val start = SimpleDateFormat("d MMM", Locale.US).format(Date(startMillis))
-    val end = SimpleDateFormat("d MMM", Locale.US).format(Date(endMillis))
+fun formatDateRangeLabel(startMillis: Long, endMillis: Long): String {
+    val start = formatDateForPreference(startMillis, withWeekday = false)
+    val end = formatDateForPreference(endMillis, withWeekday = false)
     return "$start to $end"
 }
 

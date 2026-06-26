@@ -13,8 +13,10 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.Relation
 import androidx.room.Room
+import androidx.room.migration.Migration
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 
 @Entity(tableName = "user_profile")
@@ -32,11 +34,24 @@ data class AppSettings(
     @PrimaryKey val id: Int = 1,
     val geminiApiKey: String? = null,
     val preferredUnits: String = "metric",
+    val preferredDateFormat: String = "day_month_year",
     val calorieTarget: Double = 2500.0,
     val proteinTargetGrams: Double = 120.0,
     val carbsTargetGrams: Double = 300.0,
     val fatsTargetGrams: Double = 70.0,
-    val themePreference: String = "dark"
+    val themePreference: String = "dark",
+    val followSystemTheme: Boolean = true,
+    val primaryAccentHex: String = "#BDE064",
+    val secondaryAccentHex: String = "#FF7D5A",
+    val mealReminderEnabled: Boolean = false,
+    val mealReminderHour: Int = 12,
+    val mealReminderMinute: Int = 30,
+    val weightReminderEnabled: Boolean = false,
+    val weightReminderHour: Int = 8,
+    val weightReminderMinute: Int = 0,
+    val macroReminderEnabled: Boolean = false,
+    val macroReminderHour: Int = 20,
+    val macroReminderMinute: Int = 0
 )
 
 @Entity(
@@ -141,6 +156,12 @@ interface UserProfileDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdateProfile(profile: UserProfile): Long
 
+    @Query("SELECT * FROM user_profile WHERE id = 1")
+    suspend fun getUserProfileOnce(): UserProfile?
+
+    @Query("DELETE FROM user_profile")
+    suspend fun deleteAllProfiles()
+
     @Query(
         """
         SELECT CASE
@@ -193,6 +214,24 @@ interface MealDao {
     )
     fun getMealsBetween(startInclusive: Long, endInclusive: Long): Flow<List<MealWithItems>>
 
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM meal_logs
+        ORDER BY loggedAtEpochMillis DESC
+        """
+    )
+    fun getAllMeals(): Flow<List<MealWithItems>>
+
+    @Transaction
+    @Query(
+        """
+        SELECT * FROM meal_logs
+        ORDER BY loggedAtEpochMillis DESC
+        """
+    )
+    suspend fun getAllMealsOnce(): List<MealWithItems>
+
     @Query(
         """
         SELECT
@@ -229,6 +268,9 @@ interface MealDao {
     @Query("SELECT MIN(loggedAtEpochMillis) FROM meal_logs")
     fun getEarliestMealLoggedAt(): Flow<Long?>
 
+    @Query("DELETE FROM meal_logs")
+    suspend fun deleteAllMealLogs()
+
     @Query(
         """
         SELECT
@@ -251,6 +293,12 @@ interface WeightLogDao {
 
     @Query("SELECT * FROM weight_logs ORDER BY loggedAtEpochMillis ASC")
     fun getWeightHistory(): Flow<List<WeightLog>>
+
+    @Query("SELECT * FROM weight_logs ORDER BY loggedAtEpochMillis ASC")
+    suspend fun getWeightHistoryOnce(): List<WeightLog>
+
+    @Query("DELETE FROM weight_logs")
+    suspend fun deleteAllWeightLogs()
 }
 
 @Dao
@@ -258,11 +306,17 @@ interface PresetFoodDao {
     @Query("SELECT * FROM preset_foods ORDER BY name COLLATE NOCASE ASC")
     fun getPresetFoods(): Flow<List<PresetFood>>
 
+    @Query("SELECT * FROM preset_foods ORDER BY name COLLATE NOCASE ASC")
+    suspend fun getPresetFoodsOnce(): List<PresetFood>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertOrUpdatePresetFood(presetFood: PresetFood): Long
 
     @Query("DELETE FROM preset_foods WHERE presetFoodId = :presetFoodId")
     suspend fun deletePresetFoodById(presetFoodId: Long)
+
+    @Query("DELETE FROM preset_foods")
+    suspend fun deleteAllPresetFoods()
 }
 
 @Database(
@@ -274,8 +328,8 @@ interface PresetFoodDao {
         WeightLog::class,
         PresetFood::class
     ],
-    version = 4,
-    exportSchema = false
+    version = 6,
+    exportSchema = true
 )
 abstract class SatiationDatabase : RoomDatabase() {
     abstract fun userProfileDao(): UserProfileDao
@@ -285,6 +339,34 @@ abstract class SatiationDatabase : RoomDatabase() {
     abstract fun presetFoodDao(): PresetFoodDao
 
     companion object {
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    ALTER TABLE app_settings
+                    ADD COLUMN preferredDateFormat TEXT NOT NULL DEFAULT 'day_month_year'
+                    """.trimIndent()
+                )
+            }
+        }
+
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN followSystemTheme INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN primaryAccentHex TEXT NOT NULL DEFAULT '#BDE064'")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN secondaryAccentHex TEXT NOT NULL DEFAULT '#FF7D5A'")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN mealReminderEnabled INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN mealReminderHour INTEGER NOT NULL DEFAULT 12")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN mealReminderMinute INTEGER NOT NULL DEFAULT 30")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN weightReminderEnabled INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN weightReminderHour INTEGER NOT NULL DEFAULT 8")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN weightReminderMinute INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN macroReminderEnabled INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN macroReminderHour INTEGER NOT NULL DEFAULT 20")
+                database.execSQL("ALTER TABLE app_settings ADD COLUMN macroReminderMinute INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         @Volatile
         private var INSTANCE: SatiationDatabase? = null
 
@@ -295,7 +377,7 @@ abstract class SatiationDatabase : RoomDatabase() {
                     SatiationDatabase::class.java,
                     "satiation_database"
                 )
-                    .fallbackToDestructiveMigration(dropAllTables = true)
+                    .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                 INSTANCE = instance
                 instance
